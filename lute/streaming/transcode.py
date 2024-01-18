@@ -8,6 +8,10 @@ import ffmpeg
 logger = logging.getLogger(__name__)
 
 def transcode_to_mp3(path: Path) -> Union[Path, None]:
+    if not path.exists:
+        logger.error(f"{path} is not a valid path to an audio file.")
+        return None
+    
     try:
         logger.info(f"Converting '{path}' to MP3.")
         output_path = Path(f"{path.stem}.mp3")

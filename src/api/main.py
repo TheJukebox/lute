@@ -2,19 +2,6 @@ from typing import Union
 from pathlib import Path
 import struct
 import asyncio
-<<<<<<< HEAD
-
-from audio.stream import audio_stream
-import asyncio
-
-from fastapi import FastAPI, WebSocket
-from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
-
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="lute/api/static"), name="static")
-
-=======
 import logging
 
 import streaming.transcode as tcode
@@ -96,7 +83,6 @@ async def stream(path: str, request: Request):
             StreamingResponse(content=iterfile(segment), media_type="audio/mpeg")
         logger.info(f"Finished streaming segment '{segment}' to client {client_host}")
         
->>>>>>> f12d44c6ebae3c47afbdca8334e91f9b7e335661
 @app.websocket("/audio/{path}")
 async def audio(websocket: WebSocket, path: str):
 	"""A websocket endpoint that streams audio on request to clients.

@@ -38,6 +38,8 @@ def transcode_to_dash(path: Path) -> Union[List[Path], None]:
     try:
         logger.info(f"Converting '{path}' for DASH.")
         output_path = Path(f"{path.stem}-converted")
+        if output_path.exists:
+            return output_path
         output_path.mkdir()
         logger.info(f"Created output directory '{output_path}'")
         (

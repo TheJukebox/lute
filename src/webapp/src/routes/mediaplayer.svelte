@@ -1,6 +1,9 @@
 <script>
     let endpoint = "http://localhost:8000"
-    let desired_mpd = endpoint + "/mpd/source.mpd"
+    let desired_mpd = endpoint + "/mpd/technologic.mpd"
+
+    
+
 </script>
 
 <!-- Markup -->

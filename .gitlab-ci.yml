@@ -1,0 +1,37 @@
+workflow:
+  auto_cancel:
+    on_new_commit: conservative
+  rules:
+    # Create a pipeline for MR commits
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Create a pipeline for commits to main
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Don't create a pipeline for regular commits if we're already 
+    # creating an MR pipeline
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    # Create a pipeline for regular commits otherwise
+    - if: $CI_COMMIT_BRANCH
+
+variables:
+  PYTHON_IMAGE: docker.io/python:3.11.4-bookworm
+
+stages:
+  - lint
+  - test
+
+
+lint:python:
+  stage: lint
+  image: $PYTHON_IMAGE
+  script:
+    - pip install -r requirements.txt
+    - black src/
+
+test:unit:
+  stage: test
+  image: $PYTHON_IMAGE
+  script:
+    - apt install ffmpeg
+    - pip install -r requirements.txt
+    - pytest -v -m unit

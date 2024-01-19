@@ -16,7 +16,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="src/api/static"), name="static")
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
 <script>
-    let endpoint = 
+    let endpoint = "http://localhost:8000"
+    let desired_mpd = endpoint + "/mpd/source.mpd"
 </script>
 
 <!-- Markup -->

@@ -159,4 +159,13 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# Audio formats
+# Writing a streaming platform means lots of files laying around during
+# testing that we'd rather not end up on git
 *.mp3
+*.flac
+*.mp4
+*.wav
+
+# Just annoying macOS artifact
+.DS_Store

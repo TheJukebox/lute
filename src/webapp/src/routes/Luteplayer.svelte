@@ -4,7 +4,7 @@
 
 <!-- Markup -->
 <audio id="luteplayer" controls>
-    <source src={current_audio}>
+    <source src={current_audio} >
     Your browser does not support the audio player.
 </audio>
 

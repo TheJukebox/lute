@@ -7,7 +7,7 @@
 </script>
 
 <div>
-    <Luteplayer current_audio="test.mp3"/>
+    <Luteplayer current_audio="/technologic-converted/technologic.mpd"/>
 </div>
 
 <style>

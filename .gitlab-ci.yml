@@ -14,7 +14,11 @@ workflow:
     - if: $CI_COMMIT_BRANCH
 
 variables:
-  PYTHON_IMAGE: docker.io/python:3.11.4-bookworm
+  LUTE_CI_REGISTRY: registry.gitlab.com/lute-dev/ci-container
+  CI_IMAGE_NAME: lute-ci
+  CI_IMAGE_TAG: 0.1.0
+  CI_IMAGE: $LUTE_CI_REGISTRY/$CI_IMAGE_NAME:$CI_IMAGE_TAG
+  LUTE_CI_AUTH: $(echo -n "$CI_REGISTRY_USERNAME:$CI_JOB_TOKEN) | base64
 
 stages:
   - lint
@@ -23,15 +27,14 @@ stages:
 
 lint:python:
   stage: lint
-  image: $PYTHON_IMAGE
+  image: $CI_IMAGE
   script:
     - pip install -r requirements.txt
     - black src/
 
 test:unit:
   stage: test
-  image: $PYTHON_IMAGE
+  image: $CI_IMAGE
   script:
-    - apt install ffmpeg
     - pip install -r requirements.txt
     - pytest -v -m unit

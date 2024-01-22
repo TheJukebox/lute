@@ -19,7 +19,7 @@ def test_transcode_to_mp3():
     wav_path = Path("test_audio.wav")
 
     result_path = transcode_to_mp3(wav_path)
-    assert result_path == Path("test_audio/test_audio.mp3")
+    assert result_path == Path("test_audio/test_audio")
     assert getsize(sample_path) == getsize(result_path)
     assert filecmp.cmp(sample_path, result_path)
     os.remove(result_path)

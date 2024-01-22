@@ -20,7 +20,7 @@ def transcode_to_mp3(path: Path) -> Union[Path, None]:
         return None
 
     if Path(path.stem).exists():
-        return path
+        return Path(f"{path.stem}/{path.stem}.mp3")
     try:
         logger.info(f"Converting '{path}' to MP3.")
         output_directory = Path(f"{path.stem}")

@@ -166,6 +166,9 @@ cython_debug/
 *.flac
 *.mp4
 *.wav
+*.ts
+*.m3u8
+*.mpd
 
 # Just annoying macOS artifact
 .DS_Store

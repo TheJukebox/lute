@@ -42,6 +42,36 @@ def transcode_to_mp3(path: Path) -> Union[Path, None]:
     return None
 
 
+def transcode_to_hls(path: Path) -> Union[Path, None]:
+    if not path.exists():
+        logger.error(f"{path} is not a valid path to an audio file.")
+        return None
+
+    try:
+        logger.info(f"Transcoding '{path}' to HLS format.")
+        output_path = Path(f"{path.stem}-hls")
+        if not output_path.exists():
+            output_path.mkdir()
+            logger.info(f"Created directory '{output_path}'.")
+        (
+            ffmpeg.input(path)
+            .output(
+                f"{output_path}/{path.stem}.m3u8",
+                f="hls",
+                map="0:a",
+                acodec="aac",
+                hls_time="10",
+                hls_list_size="0",
+                hls_segment_filename=f"{output_path}/{path.stem}-%03d.ts",
+            )
+            .run(overwrite_output=True)
+        )
+        return output_path
+    except ffmpeg.Error as e:
+        logger.error(f"{e.stderr}")
+        return None
+
+
 def transcode_to_dash(path: Path) -> Union[Path, None]:
     if not path.exists():
         logger.error(f"{path} is not a valid path to an audio file.")

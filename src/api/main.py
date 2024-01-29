@@ -30,6 +30,39 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
+@app.get("/hls/manifest/{uid}")
+async def hls_manifest(uid: str, request: Request):
+    """Endpoint for the client to fetch a M3U8 playlist file.
+
+    Args:
+        uid: (str): The UID of the audio.
+        request (Request): The request object created by FastAPI
+    """
+    client_host = request.client.host
+    logger.info(f"{client_host} has requested the M3U8 playlist for {uid}")
+
+    library_path = Path("library.json")
+    if not library_path.exists():
+        logger.error(f"There is no library file to open.")
+        return {"error": "There is no valid library file to query."}
+
+    library = {}
+    with open(library_path, "r") as f:
+        library = json.loads(f.read())
+        logger.info("Loaded the library file.")
+        logger.debug(f"Library contents:\n{library}\n")
+
+    try:
+        content = library[uid]
+    except KeyError as e:
+        logger.error(f"Unable to locate '{uid}' within the library file.")
+        return {"error": f"No library entry exists with the uid '{uid}'"}
+
+    m3u8_path = Path(library[uid]["manifest_path"])
+    logger.info(f"Delivering '{m3u8_path}' to {client_host}")
+    return FileResponse(path=m3u8_path)
+
+
 @app.get("/mpd/{uid}")
 async def mpd(uid: str, request: Request):
     """Endpoint for the client to receive an MPD manifest for some file in the library.
@@ -60,8 +93,64 @@ async def mpd(uid: str, request: Request):
     return FileResponse(path=mpd_path, media_type="application/dash+xml")
 
 
-@app.post("/upload/")
+@app.post("/upload/hls")
 async def upload_file(file: UploadFile, request: Request):
+    """API Endpoint for uploading audio and having it transcoded to the HLS format.
+
+    Args:
+        file (UploadFile): The file being uploaded.
+        request (Request): The request object created by FastAPI.
+    """
+    client_host = request.client.host
+    logger.info(f"{client_host} is uploading {file.filename}")
+
+    path = Path(file.filename)
+    with open(path, "wb") as output:
+        contents = await file.read()
+        output.write(contents)
+
+    logger.info(f"Transcoding {path} to HLS")
+    hls_output_path = transcode.transcode_to_hls(path)
+    logger.info(f"Created {hls_output_path}")
+
+    # Quick and dirty library file, abstracting a database
+    library_path = Path("library.json")
+    if library_path.exists():
+        with open(library_path, "r") as f:
+            library = json.loads(f.read())
+    else:
+        library = {}
+
+    uid = str(uuid4())
+    library[uid] = {
+        "title": path.stem,
+        "path": str(hls_output_path),
+        "manifest_path": str(Path(f"{hls_output_path}/{path.stem}.m3u8")),
+    }
+
+    library_json = json.dumps(library)
+    with open("library.json", "w") as library_file:
+        library_file.write(library_json)
+
+    # Return some info to the client
+    return {
+        "uid": uid,
+        "filename": file.filename,
+        "file_size": file.size,
+        "title": str(library[uid]["title"]),
+        "manifest_path": str(library[uid]["manifest_path"]),
+        "output_path": str(library[uid]["path"]),
+    }
+
+
+@app.post("/upload/dash")
+async def upload_file(file: UploadFile, request: Request):
+    """API Endpoint for uploading audio and having it transcoded to the DASH format.
+
+    Args:
+        file (UploadFile): The file being uploaded.
+        request (Request): The request object created by FastAPI.
+    """
     client_host = request.client.host
     logger.info(f"{client_host} is uploading {file.filename}")
 
@@ -107,6 +196,32 @@ async def upload_file(file: UploadFile, request: Request):
         "mpd_path": str(library[uid]["mpd_path"]),
         "output_path": str(library[uid]["path"]),
     }
+
+
+@app.get("/stream/hls/{uid}")
+def stream_hls(uid: str, request: Request):
+    client_host = request.client.host
+    logger.info(f"{client_host} is requesting a stream for {uid}")
+
+    library_path = Path("library.json")
+    if not library_path.exists():
+        logger.error("There is no library file")
+        yield {"error": "There is no library file"}
+
+    logger.info("Opening library file...")
+    library = {}
+    with open(library_path, "r") as library_file:
+        library = json.loads(library_file.read())
+
+    logger.info("Sending segments to client")
+    path = Path(library[uid]["path"])
+    manifest_path = Path(library[uid]["manifest_path"])
+    segments = [segment for segment in path.iterdir() if segment != manifest_path]
+    segments.sort()
+    for segment in segments:
+        # Even though we're returning audio, the media_type is still "video/MP2T"
+        # this is just a convention
+        yield FileResponse(path=segment, media_type="video/MP2T")
 
 
 @app.get("/stream/{uid}")

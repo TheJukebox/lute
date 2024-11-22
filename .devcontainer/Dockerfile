@@ -1,12 +1,3 @@
-FROM python:3.12-alpine3.19
+FROM golang:1.23.3-bookworm
 
-# Update mirrors and install ffmpeg and git
-RUN apk upgrade -U && \
-    apk add ffmpeg && \
-    apk add git
-
-# Install python deps
-COPY ./requirements.txt requirements.txt
-RUN pip install -r requirements.txt
-
-ENTRYPOINT [“/bin/bash”, “-c”]
+RUN apt-get upgrade 

@@ -9,7 +9,7 @@ implemented in [Go](https://go.dev/).
 
 Lute makes use of [gRPC](https://grpc.io/docs/what-is-grpc/core-concepts/) and 
 [protocol buffers](https://protobuf.dev/) to implement its API. To contribute
-to the API your development environment will require the Go implementations of
+to the API, your development environment will require the Go implementations of
 protocol buffers and a protocol buffer compiler, specific to Go.
 
 You can [install `protoc`, a protocol buffer compiler](https://grpc.io/docs/protoc-installation/), 

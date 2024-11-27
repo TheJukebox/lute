@@ -1,0 +1,6 @@
+github.com/xfrr/goffmpeg v1.0.0 h1:trxuLNb9ys50YlV7gTVNAII9J0r00WWqCGTE46Gc3XU=
+github.com/xfrr/goffmpeg v1.0.0/go.mod h1:zjLRiirHnip+/hVAT3lVE3QZ6SGynr0hcctUMNNISdQ=
+google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1 h1:F29+wU6Ee6qgu9TddPgooOdaqsxTMunOoj8KA5yuS5A=
+google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1/go.mod h1:5KF+wpkbTSbGcR9zteSqZV6fqFOWBl4Yde8En8MryZA=
+google.golang.org/protobuf v1.35.2 h1:8Ar7bF+apOIoThw1EdZl0p1oWvMqTHmpA2fRTyZO8io=
+google.golang.org/protobuf v1.35.2/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=

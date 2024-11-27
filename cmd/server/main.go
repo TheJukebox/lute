@@ -5,18 +5,18 @@ import (
 	"log"
 	"net"
 
-	pb "lute/gen"
+	pb "lute/gen/converter"
 
 	"google.golang.org/grpc"
 )
 
-type server struct {
-	pb.UnimplementedGreeterServer
+type converter struct {
+	pb.UnimplementedConverterServiceServer
 }
 
-func (s *server) SayHello(_ context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	log.Printf("Received: %v", in.GetName())
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
+func (s *converter) ConvertToHLS(_ context.Context, in *pb.FileUploadRequest) (*pb.FileUploadResponse, error) {
+	log.Printf("Received File Upload Request: %v", in.GetFileName())
+	return &pb.FileUploadResponse{Success: true, Message: "Successfully uploaded"}, nil
 }
 
 func main() {
@@ -26,10 +26,9 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterGreeterServer(s, &server{})
+	pb.RegisterConverterServiceServer(s, &converter{})
 	log.Printf("Server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
-
 }

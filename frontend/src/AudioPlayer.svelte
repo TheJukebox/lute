@@ -67,6 +67,21 @@
 			<div class='playhead' id="playhead"></div>
 		</span>
 	</div>
+	<div class='controls'>
+		<button 
+			class='previous'
+			aria-label='previous'
+		>prev</button>
+		<button 
+			class='pause'
+			onclick={ () => paused = !paused }
+			aria-label={paused ? 'play' : 'pause'}
+		></button>
+		<button 
+			class='next'
+			aria-label='next'
+		>next</button>
+	</div>
 </div>
 
 <style>
@@ -76,6 +91,36 @@
 		width: 600px;
 		height: 100px;
 		background-color: #f9f9f9;
+	}
+
+	.controls {
+		position: absolute;
+		display: flex;
+		width: 200px;
+		height: 30px;
+		background-color:#a0a0a0;
+		border: 2px dashed #000;	
+		left: 200px;
+		top: 105px;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.pause {
+		width: 15%;
+		aspect-ratio: 1;
+		background: none;
+		background-repeat: no-repeat;
+		background-position: 50% 50%;
+		border-radius: 50%;
+	}
+
+	[aria-label="pause"] {
+		background-image: url(./assets/pause.svg);
+	}
+
+	[aria-label="play"] {
+		background-image: url(./assets/play.svg);
 	}
 
 	.albumArt {
@@ -107,7 +152,7 @@
 		right: 0px;
 		height: 100%;
 		width: 5px;
-		background-color: #ffffff;
+		background-color: #252525;
 	}
 
 	.details {

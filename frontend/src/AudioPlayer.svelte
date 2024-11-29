@@ -5,6 +5,8 @@
 	let duration: number = $state(0);
 	let paused: boolean = $state(true);
 
+	let mouseDown: boolean = false;
+
 	function format(time: number): string {
 		if (isNaN(time)) return '...';
 
@@ -13,7 +15,31 @@
 
 		return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 	}
+
+	function clamp(min: number, max: number, x: number) {
+		return Math.min(Math.max(x, min), max);
+	}
+
+	function updateFill(event: MouseEvent) {
+		let seekbar: HTMLElement = document.querySelector(".seekbar") as HTMLElement;
+		let bounds: DOMRect = seekbar.getBoundingClientRect();	
+		let relativePos: number = event.clientX - bounds.left;
+
+		let style = window.getComputedStyle(seekbar);
+		let width = parseFloat(style.width);
+
+		const percentage: number = clamp(0, 100, Math.floor((relativePos / width) * 100));
+		let seekFill: HTMLElement = seekbar.querySelector(".seekbar span") as HTMLElement;
+		seekFill.style.width = `${percentage}%`;
+	}
+
+	function seek(event: MouseEvent) {
+		if (mouseDown) {
+			updateFill(event);
+		}
+	}
 </script>
+<svelte:window onmouseup={() => mouseDown = false} onmousemove={(event => seek(event))}></svelte:window>
 
 <div class='player' class:paused>
 	<audio>
@@ -26,7 +52,12 @@
 		<p class='artist'>Weezer</p>
 		<p class='album'>Weezer: The Weezer Years</p>
 	</div>
-	<div class='seek'>
+	<div class='seekbar' id="seekbar"
+		onmousedown={() => mouseDown = true }
+		onmouseup={() => mouseDown = false }
+		onmousemove={(event) => seek(event)}
+	>
+		<span class='seekbar' id="seekFill"></span>
 	</div>
 </div>
 
@@ -47,13 +78,20 @@
 		background-color: #ff0000;
 	}
 	
-	.seek {
+	.seekbar {
 		position: absolute;
 		bottom: 0;
 		height: 10%;
 		width: 100%;
 		border: 0px solid #00bbff;
 		background-color: #8b8b8b;
+	}
+
+	.seekbar span{
+		width: 0%;
+		max-width: 100%;
+		height: 100%;
+		background-color: #15ff00;
 	}
 
 	.details {

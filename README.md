@@ -1,29 +1,43 @@
 # Lute
 
-Lute is an open-source, self-hosted audio streaming platform, that allows users to listen to and interact with the same audio stream together.
+Lute is a self-hosted streaming service, with a focus on concurrent listening,
+implemented in [Go](https://go.dev/).
 
-## Installation
+## Contributing
 
-To get started with Lute, create a Python virtual environment and install the requirements:
+### API
+
+Lute makes use of [gRPC](https://grpc.io/docs/what-is-grpc/core-concepts/) and 
+[protocol buffers](https://protobuf.dev/) to implement its API. To contribute
+to the API, your development environment will require a protocol buffer compiler
+and Go-specific plugins for protocol buffers and gRPC.
+
+You can [install `protoc`, a protocol buffer compiler](https://grpc.io/docs/protoc-installation/), 
+from pre-compiled binaries. Check the documentation for specific instructions 
+for your OS.
 
 ```bash
-# Navigate to the root of the project
-$ cd /path/to/lute
-$ python -m venv lute-venv
-$ source lute-venv/bin/activate
-(lute-venv) $ pip install -r requirements.txt
+# Using apt:
+apt install -y protobuf-compiler
+
+# Using Homebrew
+brew install protobuf
 ```
 
-## Running the project
+`protoc` requires [plugins](https://github.com/protocolbuffers/protobuf-go) 
+to compile protocol buffers into the Go-specific gRPC implementation.
 
-To run the uvicorn server and access the SwaggerUI for FastAPI:
-
-```py
-# Navigate to the root of the project
-$ cd /path/to/lute
-# Activate your lute venv
-$ source lute-venv/bin/activate
-(lute-venv) $ uvicorn --app-dir src api.main:app --reload
+```bash
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```
 
-You should now be able to see the SwaggerUI at `http://127.0.0.1:8000/docs`
+#### Compiling Protocol Buffers
+
+You can compile protocol buffers in this project with `protoc`. Generally,
+`.proto` files will be found in the [`api/proto`](api/proto) directory.
+
+```bash
+protoc --go_out=. --go_opt = paths =source_relative --go-grpc_out=. \
+    --go-grpc_opt = paths =source_relative api/proto
+```

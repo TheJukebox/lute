@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/alpine
 {
-    "name": "Lute Hole",
+    "name": "lute-dev-container",
     // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
     "build": { "dockerfile": "Dockerfile" },
     // Features to add to the dev container. More info: https://containers.dev/features.
@@ -17,9 +17,9 @@
     "customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-python.python",
-                "ms-vsliveshare.vsliveshare"
-			]
+                "ms-vsliveshare.vsliveshare",
+                "golang.go"
+            ]
 		}
 	}
 

@@ -1,12 +1,8 @@
-FROM python:3.12-alpine3.19
+FROM golang:1.23.3-bookworm
 
-# Update mirrors and install ffmpeg and git
-RUN apk upgrade -U && \
-    apk add ffmpeg && \
-    apk add git
-
-# Install python deps
-COPY ./requirements.txt requirements.txt
-RUN pip install -r requirements.txt
-
-ENTRYPOINT [“/bin/bash”, “-c”]
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y protobuf-compiler && \
+    apt-get install -y ffmpeg && \
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest

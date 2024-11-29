@@ -28,9 +28,10 @@
 		let style = window.getComputedStyle(seekbar);
 		let width = parseFloat(style.width);
 
-		const percentage: number = clamp(0, 100, Math.floor((relativePos / width) * 100));
+		let percentage: number = clamp(0, 100, Math.floor((relativePos / width) * 100));
 		let seekFill: HTMLElement = seekbar.querySelector(".seekbar span") as HTMLElement;
 		seekFill.style.width = `${percentage}%`;
+		seekFill.ariaValueNow = `${percentage}`;
 	}
 
 	function seek(event: MouseEvent) {
@@ -56,6 +57,11 @@
 		onmousedown={() => mouseDown = true }
 		onmouseup={() => mouseDown = false }
 		onmousemove={(event) => seek(event)}
+		role="slider"
+		aria-valuenow=0
+		aria-valuemin=0
+		aria-valuemax=100
+		tabindex=0
 	>
 		<span class='seekbar' id="seekFill"></span>
 	</div>
@@ -95,6 +101,9 @@
 	}
 
 	.details {
+		-webkit-user-select: none; /* Safari */
+  		-ms-user-select: none; /* IE 10 and IE 11 */
+  		user-select: none; /* Standard syntax */
 		position: absolute;
 		left: 90px;
 		bottom: 10%;

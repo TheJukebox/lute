@@ -63,7 +63,9 @@
 		aria-valuemax=100
 		tabindex=0
 	>
-		<span class='seekbar' id="seekFill"></span>
+		<span class='seekbar' id="seekFill" style="width: 0%">
+			<div class='playhead' id="playhead"></div>
+		</span>
 	</div>
 </div>
 
@@ -94,10 +96,18 @@
 	}
 
 	.seekbar span{
-		width: 0%;
+		min-width: 0;
 		max-width: 100%;
 		height: 100%;
 		background-color: #15ff00;
+	}
+
+	.playhead {
+		position: absolute;
+		right: 0px;
+		height: 100%;
+		width: 5px;
+		background-color: #ffffff;
 	}
 
 	.details {

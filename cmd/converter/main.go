@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"     // providing logging for us - not necessary, but I like to start logging ASAP.
-	"os"      // for using Stat to check if files exist
-	"os/exec" // this is a builtin for executing commands on the host OS
-	"path/filepath"
-
-	//Looks for the path of a file
-	"strings" // we use this the strings library to collect output from ffmpeg
+	"log"           // providing logging for us - not necessary, but I like to start logging ASAP.
+	"os"            // for using Stat to check if files exist
+	"os/exec"       // this is a builtin for executing commands on the host OS
+	"path/filepath" //Looks for the path of a file
+	"strings"       // we use this the strings library to collect output from ffmpeg
 )
 
 func main() {
@@ -41,7 +39,7 @@ func main() {
 		log.Fatal(inputFile, err) // log the error and call os.Exit(1)
 	}
 	//Obtains file path
-	comArg := "-i " + comInput + " -f hls -c:a aac output.m3u8"
+	comArg := "-i " + comInput + " -c:a aac output.aac"
 	argParts := strings.Fields(comArg)
 
 	// exec.Command lets us compile a command as an object before we execute it.
@@ -64,7 +62,7 @@ func main() {
 	log.Printf("Executing '%s'\n %s\n", ffmpegCommand, ffmpegOutput.String())
 
 	//Outputs absolute path of the converted file
-	outputPath, err := filepath.Abs("output.m3u8")
+	outputPath, err := filepath.Abs("output.aac")
 	if err != nil {
 		log.Fatal(err)
 	} else {

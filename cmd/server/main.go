@@ -5,11 +5,15 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"time"
 
 	streamPb "lute/gen/stream"
 	uploadPb "lute/gen/upload"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/rs/cors"
 	"google.golang.org/grpc"
 )
 
@@ -40,7 +44,7 @@ func (s *streamService) StreamAudio(request *streamPb.AudioStreamRequest, stream
 			return nil
 		}
 		if err != nil {
-			log.Println("Failed to chunk stream: %s\n", err)
+			log.Printf("Failed to chunk stream: %s\n", err)
 		}
 		chunk := &streamPb.AudioStreamChunk{
 			Data:     streamBuffer[:chunkSize],
@@ -68,20 +72,42 @@ func (s *uploadService) FileUpload(_ context.Context, in *uploadPb.FileUploadReq
 	return &uploadPb.FileUploadResponse{Success: true, Message: "Successfully uploaded"}, nil
 }
 
-func main() {
-	log.Println("Starting Lute server...")
+func startGrpcServer(offline chan bool) {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("Failed to bind port: %v", err)
 	}
 	s := grpc.NewServer()
-
-	// File Upload
 	uploadPb.RegisterUploadServer(s, &uploadService{})
 	streamPb.RegisterAudioStreamServer(s, &streamService{})
 
 	log.Printf("Server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		log.Printf("Failed to serve: %v", err)
+		offline <- true
 	}
+	time.Sleep(0)
+}
+
+func startHttpServer(offline chan bool) {
+	conn, err := grpc.NewClient("http://localhost:50051", grpc.WithInsecure())
+	if err != nil {
+		log.Printf("Failed to start HTTP server: %v", err)
+		offline <- true
+	}
+	defer conn.Close()
+
+	mux := runtime.NewServeMux()
+	streamPb.RegisterAudioStreamHandlerServer(context.Background(), mux, &streamService{})
+	handler := cors.Default().Handler(mux)
+	log.Println("Starting HTTP server at localhost:8080")
+	http.ListenAndServe(":8080", handler)
+}
+
+func main() {
+	offline := make(chan bool)
+	log.Println("Starting Lute server...")
+	go startGrpcServer(offline)
+	go startHttpServer(offline)
+	<-offline
 }

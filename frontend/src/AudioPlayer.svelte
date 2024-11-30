@@ -1,4 +1,5 @@
 <script lang='ts'>
+	import '$lib/gen/stream_grpc_web_pb';
 	let { src, title, artist } = $props();
 
 	let time: number = $state(0);
@@ -6,6 +7,16 @@
 	let paused: boolean = $state(true);
 
 	let mouseDown: boolean = false;
+
+	let audio: any;
+
+	const startStream = async () => {
+		let service = new proto.stream.AudioStreamClient('localhost:8080', null, null);
+		let stream = new proto.stream.AudioStreamRequest();
+		stream.setFileName('output.aac');
+		stream.setSessionId('test-123');
+		service.streamAudio(stream);
+	} 
 
 	function format(time: number): string {
 		if (isNaN(time)) return '...';
@@ -40,11 +51,14 @@
 		}
 	}
 </script>
-<svelte:window onmouseup={() => mouseDown = false} onmousemove={(event => seek(event))}></svelte:window>
+<svelte:window 
+	onmouseup={() => mouseDown = false} 
+	onmousemove={(event => seek(event))}
+></svelte:window>
 
 <div class='player' class:paused>
-	<audio>
-
+	<audio bind:this={audio}>
+		<source class="track" src="" type="audio/3gpp">
 	</audio>
 	<div class='albumArt'>
 	</div>
@@ -71,6 +85,7 @@
 		<button 
 			class='previous'
 			aria-label='previous'
+			onclick={startStream}
 		>prev</button>
 		<button 
 			class='pause'

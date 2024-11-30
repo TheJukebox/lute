@@ -11,11 +11,16 @@
 	let audio: any;
 
 	const startStream = async () => {
-		let service = new proto.stream.AudioStreamClient('localhost:8080', null, null);
-		let stream = new proto.stream.AudioStreamRequest();
-		stream.setFileName('output.aac');
-		stream.setSessionId('test-123');
-		service.streamAudio(stream);
+		let service = new proto.stream.AudioStreamClient(
+			'http://127.0.0.1:8080',
+			null,
+			null
+		);
+		let request = new proto.stream.AudioStreamRequest();
+		console.log(request);
+		request.setFileName('output.aac');
+		request.setSessionId('test-123');
+		let stream = service.streamAudio(request);
 	} 
 
 	function format(time: number): string {

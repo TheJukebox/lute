@@ -4,16 +4,12 @@ import (
 	"context"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
-	"time"
 
 	streamPb "lute/gen/stream"
 	uploadPb "lute/gen/upload"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/rs/cors"
 	"google.golang.org/grpc"
 )
 
@@ -72,42 +68,39 @@ func (s *uploadService) FileUpload(_ context.Context, in *uploadPb.FileUploadReq
 	return &uploadPb.FileUploadResponse{Success: true, Message: "Successfully uploaded"}, nil
 }
 
-func startGrpcServer(offline chan bool) {
-	lis, err := net.Listen("tcp", ":50051")
-	if err != nil {
-		log.Fatalf("Failed to bind port: %v", err)
-	}
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-grpc-web, x-user-agent")
+
+			if r.Method == "OPTIONS" {
+				log.Println("Handling a CORS request...")
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			next.ServeHTTP(w, r)
+		},
+	)
+}
+
+func main() {
 	s := grpc.NewServer()
 	uploadPb.RegisterUploadServer(s, &uploadService{})
 	streamPb.RegisterAudioStreamServer(s, &streamService{})
 
-	log.Printf("Server listening at %v", lis.Addr())
-	if err := s.Serve(lis); err != nil {
+	mux := http.NewServeMux()
+	mux.Handle("/stream.AudioStream/StreamAudio", s)
+	handlerWithCors := corsMiddleware(mux)
+
+	server := &http.Server{
+		Addr:    "127.0.0.1:8080",
+		Handler: handlerWithCors,
+	}
+
+	log.Printf("Server listening at %v", server.Addr)
+	if err := server.ListenAndServe(); err != nil {
 		log.Printf("Failed to serve: %v", err)
-		offline <- true
 	}
-	time.Sleep(0)
-}
-
-func startHttpServer(offline chan bool) {
-	conn, err := grpc.NewClient("http://localhost:50051", grpc.WithInsecure())
-	if err != nil {
-		log.Printf("Failed to start HTTP server: %v", err)
-		offline <- true
-	}
-	defer conn.Close()
-
-	mux := runtime.NewServeMux()
-	streamPb.RegisterAudioStreamHandlerServer(context.Background(), mux, &streamService{})
-	handler := cors.Default().Handler(mux)
-	log.Println("Starting HTTP server at localhost:8080")
-	http.ListenAndServe(":8080", handler)
-}
-
-func main() {
-	offline := make(chan bool)
-	log.Println("Starting Lute server...")
-	go startGrpcServer(offline)
-	go startHttpServer(offline)
-	<-offline
 }

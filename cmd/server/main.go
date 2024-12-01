@@ -10,6 +10,8 @@ import (
 	streamPb "lute/gen/stream"
 	uploadPb "lute/gen/upload"
 
+	mw "lute/internal/middleware"
+
 	"google.golang.org/grpc"
 )
 
@@ -68,35 +70,20 @@ func (s *uploadService) FileUpload(_ context.Context, in *uploadPb.FileUploadReq
 	return &uploadPb.FileUploadResponse{Success: true, Message: "Successfully uploaded"}, nil
 }
 
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-grpc-web, x-user-agent")
-
-			if r.Method == "OPTIONS" {
-				log.Println("Handling a CORS request...")
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			next.ServeHTTP(w, r)
-		},
-	)
-}
-
 func main() {
 	s := grpc.NewServer()
 	uploadPb.RegisterUploadServer(s, &uploadService{})
 	streamPb.RegisterAudioStreamServer(s, &streamService{})
 
 	mux := http.NewServeMux()
+	mux.Handle("/upload.Upload/UploadFile", s)
 	mux.Handle("/stream.AudioStream/StreamAudio", s)
-	handlerWithCors := corsMiddleware(mux)
+	middleware := mw.GrpcWebParseMiddleware(s, mux)
+	middleware = mw.CorsMiddleware(middleware)
 
 	server := &http.Server{
 		Addr:    "127.0.0.1:8080",
-		Handler: handlerWithCors,
+		Handler: middleware,
 	}
 
 	log.Printf("Server listening at %v", server.Addr)

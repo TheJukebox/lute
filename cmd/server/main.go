@@ -71,7 +71,10 @@ func (s *uploadService) FileUpload(_ context.Context, in *uploadPb.FileUploadReq
 }
 
 func main() {
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.MaxRecvMsgSize(16*1024*1024),
+		grpc.MaxSendMsgSize(16*1024*1024),
+	)
 	uploadPb.RegisterUploadServer(s, &uploadService{})
 	streamPb.RegisterAudioStreamServer(s, &streamService{})
 

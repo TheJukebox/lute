@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"bytes"
+	"context"
 	"encoding/base64"
 	"io"
 	"log"
@@ -10,6 +10,7 @@ import (
 	streamPb "lute/gen/stream"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,6 +45,7 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 					http.Error(w, "Failed to read request", http.StatusBadRequest)
 					return
 				}
+				log.Printf("body: %s", string(body))
 
 				// Decode from b64
 				decodedBody := make([]byte, base64.StdEncoding.DecodedLen(len(body)))
@@ -53,6 +55,7 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 					http.Error(w, "Failed to decode request", http.StatusInternalServerError)
 					return
 				}
+
 				decodedBody = decodedBody[5:n] // trim the frame
 
 				// Unmarshal into protobuf
@@ -66,28 +69,49 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 				session_id := msg.SessionId
 				log.Printf("Session %s (%s) is requesting stream: %s", session_id, r.Header.Get("Origin"), filename)
 
-				forwardMsg, err := proto.Marshal(&msg)
+				conn, err := grpc.NewClient(
+					"localhost:50051",
+					grpc.WithTransportCredentials(insecure.NewCredentials()),
+				)
 				if err != nil {
-					log.Printf("Failed to marshal message: %v", err)
-					http.Error(w, "Failed to marshall message", http.StatusInternalServerError)
-					return
-				}
-				log.Printf("forward: %s", &forwardMsg)
-				reader := bytes.NewReader(forwardMsg)
-
-				forwardReq, err := http.NewRequest("POST", "stream.AudioStream/StreamAudio", reader)
-				if err != nil {
-					log.Printf("Failed to forward request: %v", err)
+					log.Printf("Failed to connect to gRPC server: %v", err)
 					http.Error(w, "Failed to forward request", http.StatusInternalServerError)
 					return
 				}
-				forwardReq.Header.Set("Content-Type", "application/grpc")
-				forwardReq.Header.Del("Content-Length")
-				log.Println(forwardReq.Header)
-				grpcServer.ServeHTTP(w, forwardReq)
+				defer conn.Close()
+
+				client := streamPb.NewAudioStreamClient(conn)
+
+				log.Println("Connected to gRPC server.")
+				stream, err := client.StreamAudio(context.Background(), &msg)
+				if err != nil {
+					log.Printf("Couldn't start stream: %v", err)
+					http.Error(w, "Failed to start stream", http.StatusInternalServerError)
+					return
+				}
+
+				for {
+					data, err := stream.Recv()
+					log.Println("chunk:%v", data.GetData())
+					if err == io.EOF {
+						log.Println("eof")
+						break
+					}
+					if err != nil {
+						log.Printf("Couldn't finish stream: %v", err)
+						http.Error(w, "Failed to finish stream", http.StatusInternalServerError)
+						return
+					}
+					w.Header().Set("Content-Type", "application/grpc")
+					w.Header().Set("Cache-Control", "no-cache")
+					w.Header().Set("Connection", "keep-alive")
+					w.Header().Set("Transfer-Encoding", "chunked")
+					w.Write(data.GetData())
+					w.(http.Flusher).Flush()
+				}
+				log.Println("Stream ended")
 				return
 			}
-			next.ServeHTTP(w, r)
 		},
 	)
 }

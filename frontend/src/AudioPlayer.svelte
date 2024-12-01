@@ -1,5 +1,6 @@
 <script lang='ts'>
 	import '$lib/gen/stream_grpc_web_pb';
+	import stream from '$lib/gen/stream_grpc_web_pb';
 	let { src, title, artist } = $props();
 
 	let time: number = $state(0);
@@ -17,11 +18,24 @@
 			null
 		);
 		let request = new proto.stream.AudioStreamRequest();
-		console.log(request);
-		request.setFileName('output.aac');
+		request.setFileName('/home/jukebox/git/lute/lute/output.aac');
 		request.setSessionId('test-123');
-		let stream = service.streamAudio(request);
-	} 
+		let stream = service.streamAudio(request)
+		stream.on('data', function(res) {
+			console.log("get");
+		});
+		stream.on('end', () => {
+			console.log("Stream ended...")
+		});
+		//let stream = service.streamAudio(request);
+		//stream.on('status', function(start) {
+		//	console.log("STARTED");
+		//});
+		//stream.on('end', function(end) {
+		//	console.log("ENDED");
+		//});
+	}
+
 
 	function format(time: number): string {
 		if (isNaN(time)) return '...';

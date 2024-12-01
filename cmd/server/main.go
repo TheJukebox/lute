@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -71,17 +72,21 @@ func (s *uploadService) FileUpload(_ context.Context, in *uploadPb.FileUploadReq
 }
 
 func main() {
-	s := grpc.NewServer(
-		grpc.MaxRecvMsgSize(16*1024*1024),
-		grpc.MaxSendMsgSize(16*1024*1024),
-	)
-	uploadPb.RegisterUploadServer(s, &uploadService{})
-	streamPb.RegisterAudioStreamServer(s, &streamService{})
+	listener, _ := net.Listen("tcp", "127.0.0.1:50051")
+	grpcNative := grpc.NewServer()
+	uploadPb.RegisterUploadServer(grpcNative, &uploadService{})
+	streamPb.RegisterAudioStreamServer(grpcNative, &streamService{})
+	go grpcNative.Serve(listener)
+	log.Printf("gRPC Native server listening at %v", listener.Addr())
+
+	grpcWeb := grpc.NewServer()
+	uploadPb.RegisterUploadServer(grpcWeb, &uploadService{})
+	streamPb.RegisterAudioStreamServer(grpcWeb, &streamService{})
 
 	mux := http.NewServeMux()
-	mux.Handle("/upload.Upload/UploadFile", s)
-	mux.Handle("/stream.AudioStream/StreamAudio", s)
-	middleware := mw.GrpcWebParseMiddleware(s, mux)
+	mux.Handle("/upload.Upload/UploadFile", grpcWeb)
+	mux.Handle("/stream.AudioStream/StreamAudio", grpcWeb)
+	middleware := mw.GrpcWebParseMiddleware(grpcWeb, mux)
 	middleware = mw.CorsMiddleware(middleware)
 
 	server := &http.Server{

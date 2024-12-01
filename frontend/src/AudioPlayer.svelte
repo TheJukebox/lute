@@ -9,31 +9,23 @@
 
 	let mouseDown: boolean = false;
 
-	let audio: any;
+	let audio: any
 
-	const startStream = async () => {
+	function fetchStream() {
 		let service = new proto.stream.AudioStreamClient(
 			'http://127.0.0.1:8080',
 			null,
-			null
+			{
+				'use-fetch': true,
+			}
 		);
 		let request = new proto.stream.AudioStreamRequest();
 		request.setFileName('/home/jukebox/git/lute/lute/output.aac');
 		request.setSessionId('test-123');
-		let stream = service.streamAudio(request)
-		stream.on('data', function(res) {
-			console.log("get");
+		const audioStream = service.streamAudio(request);
+		audioStream.on("data", (response) => {
+			console.log("DATAGET");
 		});
-		stream.on('end', () => {
-			console.log("Stream ended...")
-		});
-		//let stream = service.streamAudio(request);
-		//stream.on('status', function(start) {
-		//	console.log("STARTED");
-		//});
-		//stream.on('end', function(end) {
-		//	console.log("ENDED");
-		//});
 	}
 
 
@@ -104,7 +96,7 @@
 		<button 
 			class='previous'
 			aria-label='previous'
-			onclick={startStream}
+			onclick={fetchStream}
 		>prev</button>
 		<button 
 			class='pause'

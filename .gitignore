@@ -29,3 +29,6 @@ go.work.sum
 
 # generated code
 /gen
+
+# dlv debug
+*__debug*

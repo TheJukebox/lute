@@ -25,10 +25,9 @@ type uploadService struct {
 }
 
 func (s *streamService) StreamAudio(request *streamPb.AudioStreamRequest, stream streamPb.AudioStream_StreamAudioServer) error {
-	log.Printf("Received Stream Request from %s for %s", request.SessionId, request.FileName)
 	file, err := os.Open(request.GetFileName())
 	if err != nil {
-		log.Printf("Something has gone terribly wrong: %q\n", err)
+		log.Printf("Failed to open file for streaming: %q\n", err)
 		return err
 	}
 	defer file.Close()
@@ -39,11 +38,10 @@ func (s *streamService) StreamAudio(request *streamPb.AudioStreamRequest, stream
 	for {
 		chunkSize, err := file.Read(streamBuffer)
 		if err == io.EOF {
-			log.Println("Finished streaming!")
 			return nil
 		}
 		if err != nil {
-			log.Printf("Failed to chunk stream: %s\n", err)
+			log.Printf("Failed to chunk stream: %q\n", err)
 		}
 		chunk := &streamPb.AudioStreamChunk{
 			Data:     streamBuffer[:chunkSize],
@@ -83,10 +81,19 @@ func main() {
 	uploadPb.RegisterUploadServer(grpcWeb, &uploadService{})
 	streamPb.RegisterAudioStreamServer(grpcWeb, &streamService{})
 
+	// standup client for HTTP/1.1 to HTTP/2
+	client, err := mw.CreateGrpcClient()
+	if err != nil {
+		log.Fatalf("Failed to standup internal gRPC client...")
+	}
+	defer client.Close()
+	audioClient := streamPb.NewAudioStreamClient(client)
+	log.Println("Started audio streaming client for HTTP/1.1 to HTTP/2...")
+
 	mux := http.NewServeMux()
 	mux.Handle("/upload.Upload/UploadFile", grpcWeb)
 	mux.Handle("/stream.AudioStream/StreamAudio", grpcWeb)
-	middleware := mw.GrpcWebParseMiddleware(grpcWeb, mux)
+	middleware := mw.GrpcWebParseMiddleware(grpcWeb, mux, audioClient)
 	middleware = mw.CorsMiddleware(middleware)
 
 	server := &http.Server{

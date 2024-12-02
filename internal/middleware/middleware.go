@@ -17,6 +17,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func CreateGrpcClient() (*grpc.ClientConn, error) {
+	conn, err := grpc.NewClient(
+		"localhost:50051",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
 func CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +36,7 @@ func CorsMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Headers", "*")
 
 			if r.Method == "OPTIONS" {
-				log.Printf("Received CORS request from %s", r.Header.Get("Origin"))
+				log.Printf("(%s) Handling CORS request...", r.Header.Get("Origin"))
 				w.WriteHeader(http.StatusOK)
 				return
 			}
@@ -34,13 +45,13 @@ func CorsMiddleware(next http.Handler) http.Handler {
 	)
 }
 
-func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Handler {
+func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler, client streamPb.AudioStreamClient) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			// Only operate on requests from grpc-web clients
 			if r.Header.Get("Content-Type") == "application/grpc-web-text" {
-				log.Printf("Received grpc-web-text request from %s", r.Header.Get("Origin"))
-
+				origin := r.Header.Get("Origin")
+				log.Printf("(%s) Parsing incoming grpc-web-text request...", origin)
 				// Read body
 				body, err := io.ReadAll(r.Body)
 				if err != nil {
@@ -48,7 +59,6 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 					http.Error(w, "Failed to read request", http.StatusBadRequest)
 					return
 				}
-				log.Printf("body: %s", string(body))
 
 				// Decode from b64
 				decodedBody := make([]byte, base64.StdEncoding.DecodedLen(len(body)))
@@ -58,7 +68,6 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 					http.Error(w, "Failed to decode request", http.StatusInternalServerError)
 					return
 				}
-
 				decodedBody = decodedBody[5:n] // trim the frame
 
 				// Unmarshal into protobuf
@@ -70,33 +79,24 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 				}
 				filename := msg.FileName
 				session_id := msg.SessionId
-				log.Printf("Session %s (%s) is requesting stream: %s", session_id, r.Header.Get("Origin"), filename)
+				log.Printf("(%s) (%s) Requesting audio stream: %s", origin, session_id, filename)
 
-				conn, err := grpc.NewClient(
-					"localhost:50051",
-					grpc.WithTransportCredentials(insecure.NewCredentials()),
-				)
-				if err != nil {
-					log.Printf("Failed to connect to gRPC server: %v", err)
-					http.Error(w, "Failed to forward request", http.StatusInternalServerError)
-					return
-				}
-				defer conn.Close()
-
-				client := streamPb.NewAudioStreamClient(conn)
-
-				log.Println("Connected to gRPC server.")
+				// this is slowing us down and making response time about 10s in total...
+				// not sure how to speed it up, we're kind of just making 2 requests, so we have to wait for the 2nd one
+				// to resolve before we can respond to the first.
 				stream, err := client.StreamAudio(context.Background(), &msg)
 				if err != nil {
 					log.Printf("Couldn't start stream: %v", err)
 					http.Error(w, "Failed to start stream", http.StatusInternalServerError)
 					return
 				}
+				log.Printf("(%s) Opened gRPC stream...", origin)
 
 				w.Header().Set("Content-Type", "application/grpc-web-text")
 				w.Header().Set("Cache-Control", "no-cache")
 				w.Header().Set("Connection", "keep-alive")
 
+				log.Printf("(%s) Headers set, starting stream...", origin)
 				for {
 					// Receive the next part of the stream from the gRPC server
 					data, err := stream.Recv()
@@ -104,8 +104,8 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 						break
 					}
 					if err != nil {
-						log.Printf("Couldn't finish stream: %v", err)
-						http.Error(w, "Failed to finish stream", http.StatusInternalServerError)
+						log.Printf("(%s) Couldn't finish stream: %q", origin, err)
+						http.Error(w, "Error sending stream chunk", http.StatusInternalServerError)
 						return
 					}
 
@@ -114,26 +114,12 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 						Data:     data.GetData(),
 						Sequence: data.GetSequence(),
 					}
-					chunkBytes, err := proto.Marshal(chunk)
+					encodedResponse, err := frameGrpcResponse(chunk)
 					if err != nil {
-						log.Printf("Unable to marshal chunk: %v", err)
-						http.Error(w, "Failed to finish stream", http.StatusInternalServerError)
+						log.Printf("(%s) Failed to frame data: %q", origin, err)
+						http.Error(w, "Failed to frame response", http.StatusInternalServerError)
 						return
 					}
-
-					frameLength := uint32(len(chunkBytes))
-					var frameLengthBuffer bytes.Buffer
-					if err := binary.Write(&frameLengthBuffer, binary.BigEndian, frameLength); err != nil {
-						log.Printf("Failed to create frame: %v", err)
-						http.Error(w, "Failed while creating frame", http.StatusInternalServerError)
-						return
-					}
-					frame := []byte{0x00}
-					frame = append(frame, frameLengthBuffer.Bytes()...)
-					response := append(frame, chunkBytes...)
-					log.Printf("FRAME: %05x | CALC_LENGTH: %d", frame[:5], frameLength)
-					encodedResponse := make([]byte, base64.StdEncoding.EncodedLen(len(response)))
-					base64.StdEncoding.Encode(encodedResponse, response)
 
 					// write the chunk data
 					w.Write(encodedResponse)
@@ -141,14 +127,42 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 						flusher.Flush()
 					}
 				}
+
 				// Terminate the stream
+				log.Printf("(%s) Sending gRPC trailers to client...", origin)
 				grpc.SendHeader(r.Context(), metadata.New(map[string]string{
 					"grpc-status":  "0",
 					"grpc-message": "OK",
 				}))
-				log.Println("Finished stream.")
+				log.Printf("(%s) Stream complete!", origin)
 				return
 			}
 		},
 	)
+}
+
+func frameGrpcResponse(data *streamPb.AudioStreamChunk) ([]byte, error) {
+	// Marshal data into protobuf format
+	dataBytes, err := proto.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a grpc-web-text compliant frame
+	frameLength := uint32(len(dataBytes)) // we have to add the length
+	var frameLengthBuffer bytes.Buffer
+	if err := binary.Write(&frameLengthBuffer, binary.BigEndian, frameLength); err != nil {
+		return nil, err
+	}
+	frame := []byte{0x00}                               // single empty byte for start of frame
+	frame = append(frame, frameLengthBuffer.Bytes()...) // the length in big endian
+
+	// frame the data
+	// 0x00 | 0x00 0x00 0x00 0x00 | DATA
+	response := append(frame, dataBytes...)
+	// base64 encode the response
+	encodedResponse := make([]byte, base64.StdEncoding.EncodedLen(len(response)))
+	base64.StdEncoding.Encode(encodedResponse, response)
+
+	return encodedResponse, nil
 }

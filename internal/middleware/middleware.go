@@ -120,23 +120,23 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler) http.Han
 						http.Error(w, "Failed to finish stream", http.StatusInternalServerError)
 						return
 					}
-					var encodedChunkBytes = make([]byte, base64.StdEncoding.EncodedLen(len(chunkBytes)))
-					base64.StdEncoding.Encode(encodedChunkBytes, chunkBytes)
 
-					frameLength := uint32(len(encodedChunkBytes))
+					frameLength := uint32(len(chunkBytes))
 					var frameLengthBuffer bytes.Buffer
-					if err := binary.Write(&frameLengthBuffer, binary.LittleEndian, frameLength); err != nil {
+					if err := binary.Write(&frameLengthBuffer, binary.BigEndian, frameLength); err != nil {
 						log.Printf("Failed to create frame: %v", err)
 						http.Error(w, "Failed while creating frame", http.StatusInternalServerError)
 						return
 					}
 					frame := []byte{0x00}
 					frame = append(frame, frameLengthBuffer.Bytes()...)
-					response := append(frame, encodedChunkBytes...)
+					response := append(frame, chunkBytes...)
 					log.Printf("FRAME: %05x | CALC_LENGTH: %d", frame[:5], frameLength)
+					encodedResponse := make([]byte, base64.StdEncoding.EncodedLen(len(response)))
+					base64.StdEncoding.Encode(encodedResponse, response)
 
 					// write the chunk data
-					w.Write(response)
+					w.Write(encodedResponse)
 					if flusher, ok := w.(http.Flusher); ok {
 						flusher.Flush()
 					}

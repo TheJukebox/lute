@@ -10,7 +10,6 @@ import (
 
 //Currently spits file out next to wherever it's run from.
 //Also returns a string of the absolute path of the generated file
-
 //FFMPEG fails to parse properly when introducing whitespace into path.
 
 // Expects a string. In this case the full path of the file to be converted.
@@ -65,5 +64,5 @@ func ConvertFile(filePath string) (returnPath string) {
 		returnPath = pathOutput
 
 	}
-	return returnPath
+	return
 }

@@ -1,4 +1,6 @@
 <script lang='ts'>
+	import '$lib/gen/stream_grpc_web_pb';
+	import stream from '$lib/gen/stream_grpc_web_pb';
 	let { src, title, artist } = $props();
 
 	let time: number = $state(0);
@@ -6,6 +8,26 @@
 	let paused: boolean = $state(true);
 
 	let mouseDown: boolean = false;
+
+	let audio: any
+
+	function fetchStream() {
+		let service = new proto.stream.AudioStreamClient(
+			'http://127.0.0.1:8080',
+			null,
+			{
+				'use-fetch': true,
+			}
+		);
+		let request = new proto.stream.AudioStreamRequest();
+		request.setFileName('/home/jukebox/git/lute/lute/output.aac');
+		request.setSessionId('test-123');
+		const audioStream = service.streamAudio(request);
+		audioStream.on("data", (response) => {
+			console.log("DATAGET");
+		});
+	}
+
 
 	function format(time: number): string {
 		if (isNaN(time)) return '...';
@@ -40,11 +62,14 @@
 		}
 	}
 </script>
-<svelte:window onmouseup={() => mouseDown = false} onmousemove={(event => seek(event))}></svelte:window>
+<svelte:window 
+	onmouseup={() => mouseDown = false} 
+	onmousemove={(event => seek(event))}
+></svelte:window>
 
 <div class='player' class:paused>
-	<audio>
-
+	<audio bind:this={audio}>
+		<source class="track" src="" type="audio/3gpp">
 	</audio>
 	<div class='albumArt'>
 	</div>
@@ -71,6 +96,7 @@
 		<button 
 			class='previous'
 			aria-label='previous'
+			onclick={fetchStream}
 		>prev</button>
 		<button 
 			class='pause'

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package stream;
+
+option go_package = "github.com/TheJukebox/lute/gen/stream";
+
+service AudioStream {
+    rpc StreamAudio (AudioStreamRequest) returns (stream AudioStreamChunk) {};
+}
+
+message AudioStreamRequest {
+    string file_name = 1;
+    string session_id = 2;
+}
+
+message AudioStreamChunk {
+    bytes data = 1;
+    int32 sequence = 2;
+}

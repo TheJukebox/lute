@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import subprocess as ps
 from pathlib import Path
@@ -38,7 +39,7 @@ def build_all(path: Path) -> Path:
         click.echo(f"\t{proto}")
 
     for proto in proto_files:
-        click.echo(f"\nBuilding: {proto}...")
+        click.echo(f"\nBuilding '{proto}'...")
         built = build_proto(Path(proto))
         if built and built.exists():
             click.echo(click.style(f"Successfully built '{built}' !", fg="green"))
@@ -47,9 +48,15 @@ def build_all(path: Path) -> Path:
 @click.command()
 @click.option("--all", is_flag=True, help="Compiles all protobuffers found in the current directory tree.")
 @click.argument("path", required=True)
-def build(path: Path, all: bool) -> None:
+def build(path: Path, all: bool):
     if all:
-        build_all(path)
+        build_all(Path(path))
+        exit(0)
+    click.echo(f"\nBuilding {path}...")
+    built = build_proto(Path(path))
+    if built and built.exists():
+        click.echo(click.style(f"Successfully built '{built}' !", fg="green"))
+        
 
 if __name__ == "__main__":
     build()

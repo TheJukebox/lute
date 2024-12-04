@@ -1,7 +1,7 @@
 <script lang='ts'>
 	import stream from '$lib/gen/stream_grpc_web_pb';
 	import '$lib/audio'
-	import { fetchStream } from '$lib/audio';
+	import { fetchStream, playFromBuffer } from '$lib/audio';
 	let { src, title, artist } = $props();
 
 	let time: number = $state(0);
@@ -15,12 +15,7 @@
 	const audioBufferQueue: AudioBuffer[] = [];
 
 	function startStream() {
-		fetchStream('http://127.0.0.1:8080', 'output.aac', 'test-session');
-		playAudio();
-	}
-
-
-	function playAudio() {
+		fetchStream('http://127.0.0.1:8080', '../../output.aac', 'test-session');
 	}
 
 

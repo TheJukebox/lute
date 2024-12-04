@@ -1,29 +1,31 @@
-import stream from '$lib/gen/stream_grpc_web_pb';
+import '$lib/gen/stream_grpc_web_pb';
+import { sequence } from '@sveltejs/kit/hooks';
 
 let context: AudioContext | null = null;
-const queue: AudioBuffer[] = [];
+const audioQueue: AudioBuffer[] = [];
+let dataQueue: Uint8Array[] = [];
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export function playFromBuffer() {
-    if (!context) {
+    if (context === null) {
         // potentially need to set sampleRate option: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-samplerate
         // by default it should use the target device's preferred sample rate
-        context = new AudioContext(); 
+        console.log("Created new context...");
+        context = new AudioContext({"latencyHint": "playback", "sampleRate": 44100}); 
     }
     const source: AudioBufferSourceNode = context.createBufferSource();
-    const next: AudioBuffer | null | undefined = queue.shift();
+    const next: AudioBuffer | null | undefined = audioQueue.shift();
     if (next === null || next === undefined) {
         return
     }
+    
     source.buffer = next; 
     // @ts-ignore - context will not be null, even though ts thinks it could be
     source.connect(context.destination);
-    source.start();
-    playFromBuffer();
-    sleep(3000000);
+    source.start(0, 0, next.duration);
 }
 
 export async function decodeAudio(data: ArrayBuffer) : Promise<AudioBuffer> {
@@ -33,42 +35,41 @@ export async function decodeAudio(data: ArrayBuffer) : Promise<AudioBuffer> {
         // by default it should use the target device's preferred sample rate
         context = new AudioContext(); 
     }
-    //return await context.decodeAudioData(data);
-
     return await context.decodeAudioData(data);
 }
 
 export function fetchStream(host: string, path: string, sessionId: string) {
-    let service = new stream.AudioStreamClient(
+    let service = new proto.stream.AudioStreamClient(
         host,
         null,
         {
             'use-fetch': true,
         }
     );
-    let request = new stream.AudioStreamRequest();
+    let request = new proto.stream.AudioStreamRequest();
     request.setFileName(path);
     request.setSessionId(sessionId);
 
-    console.info(`(${host}) (${sessionId}) Requesting stream '${path}'...`)
-    const audioStream = service.streamAudio(request);
-    console.info(`(${host}) (${sessionId}) Opened stream!`);
-
-    audioStream.on('data', async (response: stream.AudioStreamChunk) => {
-        const encoder = new TextEncoder()
+    console.info(`(${host}) (${sessionId}) Requesting stream '${path}'...`);
+    console.log(service);
+    const audioStream = service.streamAudio(request, null);
+    //console.info(`(${host}) (${sessionId}) Opened stream!`);
+    audioStream.on('data', async (response: proto.stream.AudioStreamChunk) => {
         // @ts-ignore - for some reason it thinks it's going to be a string
         // after assignment...
         const data: Uint8Array = response.getData(); 
-
-        const blob: Blob = new Blob([data]); // convert to a Blob first, so we can create an ArrayBuffer
-        const buff: ArrayBuffer = await blob.arrayBuffer();
-        const decodedData = await decodeAudio(buff);
-        queue.push(decodedData);
-        playFromBuffer();
-        console.debug(`(${host}) (${sessionId}) Buffering chunk #${response.getSequence()}...`);
+        dataQueue = dataQueue.concat(data);
     });
 
-    audioStream.on('end'), async (end: any) => {
-        console.info(`(${host}) (${sessionId}) Stream ended.`);
-    }
+    audioStream.on('end', async () => {
+        console.log(dataQueue);
+        let blob = new Blob(dataQueue);
+        console.log(blob);
+        let buff = await blob.arrayBuffer();
+        console.log(buff);
+        let audio = await decodeAudio(buff);
+        console.log(audio);
+        audioQueue.push(audio);
+        playFromBuffer();
+    })
 }

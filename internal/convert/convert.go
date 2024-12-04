@@ -8,40 +8,38 @@ import (
 	"strings"       // we use this the strings library to collect output from ffmpeg
 )
 
-//Currently spits file out next to wherever it's run from.
+//Currently throws file out next to wherever it's run from.
 //Also returns a string of the absolute path of the generated file
-//FFMPEG fails to parse properly when introducing whitespace into path.
 
-// Expects a string. In this case the full path of the file to be converted.
+// Expects a string. In this case the full path of the file to be converted. Returns output.
 func ConvertFile(filePath string) (returnPath string) {
 
 	log.Println("Starting Lute converter...")
 
-	//Error handling for existence of ffmpeg.
+	//Error handling for existence of ffmpeg
 	ffmpegPath, err := exec.LookPath("ffmpeg")
 	if err != nil {
-		log.Printf("Unable to find ffmpeg. Terminating...")
 		log.Fatal(err)
 	} else {
 		log.Printf("Found ffmpeg at %q\n", ffmpegPath)
 	}
 
+	//Error handling for existence of provided file path
 	inputPath, err := os.Stat(filePath)
 	if err != nil {
-		log.Printf("File not located. Please check your path. Terminating...")
-		log.Fatal(err)
+		log.Fatal(inputPath, err)
 	} else {
-		log.Printf("Path for file %q is valid", inputPath.Name())
+		log.Printf("Found file at %q", filePath)
 	}
 
-	//Puts together the ffmpeg command with a string. Fields also screams with path whitespace
-	commandArg := "-i " + filePath + " -c:a aac output.aac"
-	//commandArg := fmt.Sprintf("-i %s -c:a aac output.aac", filePath)
-	argParts := strings.Fields(commandArg)
+	//Creates a slice filled with the relevant arguments to run the FFMPEG exec.Command()
+	//Also logs the literal output of the slice.
+	manualArg := []string{"-i", filePath, "-c:a", "aac", "output.aac"}
+	log.Printf("Literal manualArg slice output: %#v\n", manualArg)
 
 	// exec.Command lets us compile a command as an object before we execute it.
 	// that way we can programatically construct them!
-	ffmpegCommand := exec.Command(ffmpegPath, argParts...)
+	ffmpegCommand := exec.Command("ffmpeg", manualArg...)
 
 	//Use strings.Builder since it handles memory efficiently
 	var ffmpegOutput strings.Builder
@@ -52,9 +50,7 @@ func ConvertFile(filePath string) (returnPath string) {
 	// Logs output with format string
 	log.Printf("Executing '%s' %s \n", ffmpegCommand, ffmpegOutput.String())
 
-	//Will need to be changed when we specify where we actually want
-	//to output converted files later.
-
+	//Error handling for output as well as setting return filepath.
 	pathOutput, err := os.Stat("output.aac")
 	if err != nil {
 		log.Fatal(pathOutput, err)

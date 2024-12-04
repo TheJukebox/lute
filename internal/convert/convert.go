@@ -12,7 +12,7 @@ import (
 //Also returns a string of the absolute path of the generated file
 
 // Expects a string. In this case the full path of the file to be converted. Returns output.
-func ConvertFile(filePath string) (returnPath string) {
+func ConvertFile(filePath string) string {
 
 	log.Println("Starting Lute converter...")
 
@@ -25,11 +25,11 @@ func ConvertFile(filePath string) (returnPath string) {
 	}
 
 	//Error handling for existence of provided file path
-	inputPath, err := os.Stat(filePath)
+	_, err = os.Stat(filePath)
 	if err != nil {
-		log.Fatal(inputPath, err)
+		log.Fatal(err)
 	} else {
-		log.Printf("Found file at %q", filePath)
+		log.Printf("Found file at %q\n", filePath)
 	}
 
 	//Creates a slice filled with the relevant arguments to run the FFMPEG exec.Command()
@@ -50,15 +50,9 @@ func ConvertFile(filePath string) (returnPath string) {
 	// Logs output with format string
 	log.Printf("Executing '%s' %s \n", ffmpegCommand, ffmpegOutput.String())
 
-	//Error handling for output as well as setting return filepath.
-	pathOutput, err := os.Stat("output.aac")
-	if err != nil {
-		log.Fatal(pathOutput, err)
-	} else {
-		pathOutput, _ := filepath.Abs("output.aac")
-		log.Print("Output file absolute path: ", pathOutput)
-		returnPath = pathOutput
+	//Sets return
+	pathOutput, _ := filepath.Abs("output.aac")
+	log.Println("Output file absolute path: ", pathOutput)
 
-	}
-	return
+	return pathOutput
 }

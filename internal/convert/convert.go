@@ -36,7 +36,7 @@ func ConvertFile(filePath string) (string, error) {
 
 	//Creates a slice filled with the relevant arguments to run the FFMPEG exec.Command()
 	//Also logs the literal output of the slice.
-	manualArg := []string{"-i", filePath, "-c:a", "aac", "output.aac"}
+	manualArg := []string{"-i", filePath, "-c:a", "aac", "-f", "adts", "output.aac"}
 	log.Printf("Literal manualArg slice output: %#v\n", manualArg)
 
 	// exec.Command lets us compile a command as an object before we execute it.
@@ -47,6 +47,9 @@ func ConvertFile(filePath string) (string, error) {
 	var ffmpegOutput strings.Builder
 
 	ffmpegCommand.Stdout = &ffmpegOutput
+
+	//Will check for errors in command. Like if the file already exists.
+	//So make sure to do something with it each run.
 	err = ffmpegCommand.Run()
 	if err != nil {
 		log.Printf("Something went wrong executing FFMPEG command: %q\n", err)
@@ -58,7 +61,7 @@ func ConvertFile(filePath string) (string, error) {
 
 	//Sets return
 	pathOutput, _ := filepath.Abs("output.aac")
-	log.Println("Output file absolute path: ", pathOutput)
+	log.Println("Output file absolute path:", pathOutput)
 
 	return pathOutput, nil
 }

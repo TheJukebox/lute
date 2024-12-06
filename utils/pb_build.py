@@ -5,14 +5,9 @@ from pathlib import Path
 
 import click
 
-JS_OUT = Path("frontend/src/lib/gen")
-if not JS_OUT.exists():
-    click.echo(f"Creating {JS_OUT}")
-    os.mkdir(JS_OUT)
 
 def build_proto(path: Path) -> Path | Exception:
-    js = "--js_out=import_style=commonjs,binary:frontend/src/lib/gen --grpc-web_out=import_style=typescript,mode=grpcwebtext:frontend/src/lib/gen"
-    cmd = f"protoc -I {path.parent} --go_out=. --go-grpc_out=. {js} {path}"
+    cmd = f"protoc -I {path.parent} --go_out=. --go-grpc_out=. {path}"
     # protoc -I api/proto stream.proto --js_out=import_style=commonjs,binary:frontend/src/lib/gen --grpc-web_out=import_style=typescript,mode=grpcwebtext:frontend/src/lib/gen
     try:
         ps.run(cmd.split(" "), check=True, stderr=ps.PIPE)

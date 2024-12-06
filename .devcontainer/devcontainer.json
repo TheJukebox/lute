@@ -12,6 +12,7 @@
 
     // Use 'postCreateCommand' to run commands after the container is created.
     // "postCreateCommand": "uname -a",
+    "postStartCommand": "/bin/bash .devcontainer/startup.bash",
 
     // Configure tool-specific properties.
     "customizations": {

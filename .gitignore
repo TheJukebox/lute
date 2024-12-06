@@ -28,7 +28,10 @@ go.work.sum
 *.pb.*
 
 # generated code
-/gen
+*/**/gen
 
 # dlv debug
 *__debug*
+
+# python
+venv/

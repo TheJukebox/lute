@@ -17,7 +17,7 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function playbackReady() {
+async function playbackReady() {
     return new Promise(resolve => {
         setInterval(() => {
             if (audioBuffer.length > 0) {
@@ -42,7 +42,7 @@ export async function togglePlayback(): Promise<void> {
     }
 }
 
-export function playFromBuffer() {
+function playFromBuffer() {
     // if we aren't meant to be playing, bail out
     if (!playing) { 
         // we need to handle stopping better, otherwise we'll lose
@@ -60,7 +60,6 @@ export function playFromBuffer() {
     currentNode = source;
     const next: AudioBuffer | null | undefined = audioBuffer.shift();
     if (next === null || next === undefined) {
-        console.log("UNDERFLOW!");
         return;
     }
     

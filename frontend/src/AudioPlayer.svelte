@@ -1,7 +1,7 @@
 <script lang='ts'>
 	import stream from '$lib/gen/stream_grpc_web_pb';
 	import '$lib/audio_processing'
-	import { fetchStream, playFromBuffer, togglePlayback } from '$lib/audio_processing';
+	import { fetchStream, togglePlayback } from '$lib/audio_processing';
 	let { src, title, artist } = $props();
 
 	let time: number = $state(0);

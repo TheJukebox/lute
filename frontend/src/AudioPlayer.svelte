@@ -1,7 +1,7 @@
 <script lang='ts'>
 	import stream from '$lib/gen/stream_grpc_web_pb';
 	import '$lib/gen/audio_processing'
-	import { fetchStream, playFromBuffer } from '$lib/gen/audio_processing';
+	import { fetchStream, playFromBuffer, togglePlayback } from '$lib/gen/audio_processing';
 	let { src, title, artist } = $props();
 
 	let time: number = $state(0);
@@ -11,10 +11,15 @@
 	let mouseDown: boolean = false;
 
 	function startStream() {
+		paused = !paused
 		fetchStream('http://127.0.0.1:8080', '../../output.aac', 'test-session');
-		setInterval(playFromBuffer, 40);
+		togglePlayback();
 	}
-
+	
+	function toggle() {
+		paused = !paused
+		togglePlayback();
+	}
 
 	function format(time: number): string {
 		if (isNaN(time)) return '...';
@@ -86,7 +91,7 @@
 		>prev</button>
 		<button 
 			class='pause'
-			onclick={ () => paused = !paused }
+			onclick={toggle}
 			aria-label={paused ? 'play' : 'pause'}
 		></button>
 		<button 

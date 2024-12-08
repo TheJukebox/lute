@@ -32,7 +32,7 @@ func (s *streamService) StreamAudio(request *streamPb.AudioStreamRequest, stream
 	}
 	defer file.Close()
 
-	streamBuffer := make([]byte, 1024)
+	streamBuffer := make([]byte, 8192*5)
 	sequence := int32(0)
 
 	for {

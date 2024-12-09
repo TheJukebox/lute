@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 
 	streamPb "lute/gen/stream"
 	uploadPb "lute/gen/upload"
@@ -13,7 +14,15 @@ import (
 	"google.golang.org/grpc"
 )
 
+func debugSetup() {
+	os.Mkdir("uploads/raw", 0700)
+	os.Mkdir("uploads/converted", 0700)
+}
+
 func main() {
+	// setup folders
+	debugSetup()
+
 	listener, _ := net.Listen("tcp", "127.0.0.1:50051")
 	grpcNative := grpc.NewServer()
 	uploadPb.RegisterUploadServer(grpcNative, &api.UploadService{})

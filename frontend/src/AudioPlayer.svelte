@@ -1,6 +1,5 @@
 <script lang='ts'>
-	import '$lib/gen/stream_grpc_web_pb';
-	import stream from '$lib/gen/stream_grpc_web_pb';
+	import { fetchStream, togglePlayback } from '$lib/audio_processing';
 	let { src, title, artist } = $props();
 
 	let time: number = $state(0);
@@ -9,26 +8,32 @@
 
 	let mouseDown: boolean = false;
 
-	let audio: any
+	/**
+	 * Fetches and starts a stream.
+	 * @function
+	 */
+	function startStream(): void {
+		paused = !paused
+		fetchStream('http://127.0.0.1:8080', '../../output.aac', 'test-session');
+		togglePlayback();
+	}
+	
 
-	function fetchStream() {
-		let service = new proto.stream.AudioStreamClient(
-			'http://127.0.0.1:8080',
-			null,
-			{
-				'use-fetch': true,
-			}
-		);
-		let request = new proto.stream.AudioStreamRequest();
-		request.setFileName('/home/jukebox/git/lute/lute/output.aac');
-		request.setSessionId('test-123');
-		const audioStream = service.streamAudio(request);
-		audioStream.on("data", (response) => {
-			console.log("DATAGET");
-		});
+	/**
+	 * Toggles playback of the stream.
+	 * @function
+	 */
+	function toggle(): void {
+		paused = !paused
+		togglePlayback();
 	}
 
-
+	/**
+	 * Takes a time in seconds and converts it to a string in the format MM:SS
+	 * @function format
+	 * @param time {number}	A length of time in seconds.
+	 * @returns {string}	Formated time or '...'.
+	 */
 	function format(time: number): string {
 		if (isNaN(time)) return '...';
 
@@ -38,11 +43,16 @@
 		return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 	}
 
-	function clamp(min: number, max: number, x: number) {
+	function clamp(min: number, max: number, x: number): number {
 		return Math.min(Math.max(x, min), max);
 	}
 
-	function updateFill(event: MouseEvent) {
+	/**
+	 * Updates the fill of the seekbar element
+	 * @function
+	 * @param event	{MouseEvent}	The mouse event that triggered this function.
+	 */
+	function updateFill(event: MouseEvent): void {
 		let seekbar: HTMLElement = document.querySelector(".seekbar") as HTMLElement;
 		let bounds: DOMRect = seekbar.getBoundingClientRect();	
 		let relativePos: number = event.clientX - bounds.left;
@@ -55,12 +65,18 @@
 		seekFill.style.width = `${percentage}%`;
 		seekFill.ariaValueNow = `${percentage}`;
 	}
-
-	function seek(event: MouseEvent) {
+	
+	/**
+	 * Convenience function for discarding mouse events.
+	 * @function
+	 * @param event
+	 */
+	function seek(event: MouseEvent): void {
 		if (mouseDown) {
 			updateFill(event);
 		}
 	}
+
 </script>
 <svelte:window 
 	onmouseup={() => mouseDown = false} 
@@ -68,8 +84,7 @@
 ></svelte:window>
 
 <div class='player' class:paused>
-	<audio bind:this={audio}>
-		<source class="track" src="" type="audio/3gpp">
+	<audio>
 	</audio>
 	<div class='albumArt'>
 	</div>
@@ -96,11 +111,11 @@
 		<button 
 			class='previous'
 			aria-label='previous'
-			onclick={fetchStream}
+			onclick={startStream}
 		>prev</button>
 		<button 
 			class='pause'
-			onclick={ () => paused = !paused }
+			onclick={toggle}
 			aria-label={paused ? 'play' : 'pause'}
 		></button>
 		<button 

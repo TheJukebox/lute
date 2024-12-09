@@ -1,6 +1,4 @@
 <script lang='ts'>
-	import stream from '$lib/gen/stream_grpc_web_pb';
-	import '$lib/audio_processing'
 	import { fetchStream, togglePlayback } from '$lib/audio_processing';
 	let { src, title, artist } = $props();
 
@@ -10,17 +8,32 @@
 
 	let mouseDown: boolean = false;
 
-	function startStream() {
+	/**
+	 * Fetches and starts a stream.
+	 * @function
+	 */
+	function startStream(): void {
 		paused = !paused
 		fetchStream('http://127.0.0.1:8080', '../../output.aac', 'test-session');
 		togglePlayback();
 	}
 	
-	function toggle() {
+
+	/**
+	 * Toggles playback of the stream.
+	 * @function
+	 */
+	function toggle(): void {
 		paused = !paused
 		togglePlayback();
 	}
 
+	/**
+	 * Takes a time in seconds and converts it to a string in the format MM:SS
+	 * @function format
+	 * @param time {number}	A length of time in seconds.
+	 * @returns {string}	Formated time or '...'.
+	 */
 	function format(time: number): string {
 		if (isNaN(time)) return '...';
 
@@ -30,11 +43,16 @@
 		return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 	}
 
-	function clamp(min: number, max: number, x: number) {
+	function clamp(min: number, max: number, x: number): number {
 		return Math.min(Math.max(x, min), max);
 	}
 
-	function updateFill(event: MouseEvent) {
+	/**
+	 * Updates the fill of the seekbar element
+	 * @function
+	 * @param event	{MouseEvent}	The mouse event that triggered this function.
+	 */
+	function updateFill(event: MouseEvent): void {
 		let seekbar: HTMLElement = document.querySelector(".seekbar") as HTMLElement;
 		let bounds: DOMRect = seekbar.getBoundingClientRect();	
 		let relativePos: number = event.clientX - bounds.left;
@@ -47,12 +65,18 @@
 		seekFill.style.width = `${percentage}%`;
 		seekFill.ariaValueNow = `${percentage}`;
 	}
-
-	function seek(event: MouseEvent) {
+	
+	/**
+	 * Convenience function for discarding mouse events.
+	 * @function
+	 * @param event
+	 */
+	function seek(event: MouseEvent): void {
 		if (mouseDown) {
 			updateFill(event);
 		}
 	}
+
 </script>
 <svelte:window 
 	onmouseup={() => mouseDown = false} 

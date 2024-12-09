@@ -13,21 +13,37 @@ let lastFrame: Uint8Array = new Uint8Array(0);
 let chunkQueue: Uint8Array = new Uint8Array(0);
 
 
-function sleep(ms: number) {
+/**
+ * Convenience function that pauses execution for the desired amount of milliseconds.
+ * @function
+ * @param ms {number}   The time to sleep in milliseconds.
+ * @returns {Promise<void>}   Returns a promise to halt execution until the time has elapsed.
+ */
+function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function playbackReady() {
+/**
+ * Convenience function that pauses execution until audio data has been buffered.
+ * @function
+ * @returns {Promise<void>} Returns a promise to halt execution until data is available.
+ */
+function playbackReady(): Promise<void> {
     return new Promise(resolve => {
         setInterval(() => {
             if (audioBuffer.length > 0) {
-                resolve(true);
+                resolve();
             }
         }, 1);
     });
 
 }
 
+/**
+ * Toggles stream playback.
+ * @async
+ * @function
+ */
 export async function togglePlayback(): Promise<void> {
     playing = !playing;
     if (playing) {
@@ -42,7 +58,12 @@ export async function togglePlayback(): Promise<void> {
     }
 }
 
-function playFromBuffer() {
+/**
+ * Recursive function to playback queued audio.
+ * @function 
+ * @returns {void}  Returns if there is nothing valid in the buffer or playback is paused.
+ */
+function playFromBuffer(): void {
     // if we aren't meant to be playing, bail out
     if (!playing) { 
         // we need to handle stopping better, otherwise we'll lose
@@ -76,6 +97,13 @@ function playFromBuffer() {
 }
 
 
+/**
+ * Decodes audio from an array of binary data.
+ * @async
+ * @function
+ * @param data {Uint8Array} The binary data for decoding.
+ * @returns 
+ */
 async function decodeAudio(data: Uint8Array) : Promise<AudioBuffer> {
     // we defer the creation of the AudioContext to avoid "autoplay" policy.
     if (!context) {
@@ -89,26 +117,33 @@ async function decodeAudio(data: Uint8Array) : Promise<AudioBuffer> {
 }
 
 
-function concatArrays(x: Uint8Array, y: Uint8Array) {
-    const combinedData: Uint8Array = new Uint8Array(x.length + y.length);
-    combinedData.set(x);
-    combinedData.set(y, x.length);
-    return combinedData;
-}
 
-
-async function waitForPrevious(seq: number) {
+/**
+ * A convenience function to halt execution until the preceding chunk has been buffered.
+ * @async
+ * @function
+ * @param seq   The incoming sequence. We halt until the previous sequence has been buffered.
+ * @returns {Promise<void>} 
+ */
+async function waitForPrevious(seq: number): Promise<void> {
     return new Promise(resolve => {
         setInterval(() => {
             if (seq === nextBuffer) {
                 nextBuffer = seq + 1;
-                resolve(true);
+                resolve();
             }
         }, 10);
     });
 }
 
 
+/**
+ * A convenience function to handle decoding and queuing audio.
+ * @async
+ * @function
+ * @param chunk {Uint8Array}    The audio data to queue.
+ * @param seq   {number}        The sequence_id of the data. Used to order chunks.
+ */
 async function queueAudio(chunk: Uint8Array, seq: number): Promise<void> {
     let decoded: AudioBuffer = await decodeAudio(chunk);
     await waitForPrevious(seq);
@@ -116,6 +151,13 @@ async function queueAudio(chunk: Uint8Array, seq: number): Promise<void> {
 }
 
 
+/**
+ * Fetches a stream for the specified file from the target host and starts buffering it.
+ * @function
+ * @param host {string} 
+ * @param path {string}
+ * @param sessionId {string}
+ */
 export function fetchStream(host: string, path: string, sessionId: string) {
     let service = new proto.stream.AudioStreamClient(
         host,
@@ -169,7 +211,12 @@ export function fetchStream(host: string, path: string, sessionId: string) {
     });
 }
 
-function containsADTSHeader(data: Uint8Array) {
+/**
+ * Determines if the data in the array contains a valid ADTS header.
+ * @param data {Uint8Array} The data to operate on.
+ * @returns {number}        The index that the ADTS header begins at. 
+ */
+function containsADTSHeader(data: Uint8Array): number {
     for (let i = 0; i < data.length - 7; i++) {
         // Identify the sync word - 12 bits
         if (data[i] === 0xFF && (data[i + 1] & 0xF0) === 0xF0) {
@@ -225,4 +272,18 @@ function containsADTSHeader(data: Uint8Array) {
         }
     }
     return -1;
+}
+
+/**
+ * Concatenates two byte arrays and returns the result.
+ * @function
+ * @param x {Uint8Array}    The first array.
+ * @param y {Uint8Array}    The second array, to be appended.
+ * @returns {Uint8Array}    An array with x and y's data combined.
+ */
+function concatArrays(x: Uint8Array, y: Uint8Array): Uint8Array {
+    const combinedData: Uint8Array = new Uint8Array(x.length + y.length);
+    combinedData.set(x);
+    combinedData.set(y, x.length);
+    return combinedData;
 }

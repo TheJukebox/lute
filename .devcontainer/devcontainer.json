@@ -19,8 +19,13 @@
 		"vscode": {
 			"extensions": [
                 "ms-vsliveshare.vsliveshare",
-                "golang.go"
-            ]
+                "golang.go",
+                "ms-vscode.vscode-typescript-next",
+                "svelte.svelte-vscode"
+            ],
+            "settings": {
+                "svelte.enable-ts-plugin": true
+            }
 		}
 	}
 

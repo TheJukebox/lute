@@ -22,3 +22,24 @@ $ utils/pb_build.py --all .
 # Build a specific protobuffer
 $ utils/pb_build.py api/proto/stream.proto
 ```
+
+### upload
+The `upload` utility can be used to upload files to the server via RPC.
+
+```bash
+# Uploads a file to the server
+$ utils/upload/upload.py path/to/file.mp3
+```
+
+## (WIP) Building New Utilities
+Python utilities for Lute are built using [click](https://click.palletsprojects.com/en/stable/), to provide
+consistent and featured CLIs out of the gate. New utilities should follow the same pattern where possible. If the
+utility requires compiling proto files, they should be packed into a flat directory (see the [upload](./upload) utility).
+
+When you build a new utility, ensure that its requirements are added to the [requirements](requirements.txt) file:
+
+```bash
+pip freeze > utils/requirements.txt
+```
+
+Utilities should be friendly for use in CI/CD, using appropriate exit codes and returning enough input to ease debugging.

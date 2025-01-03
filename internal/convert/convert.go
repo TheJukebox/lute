@@ -37,7 +37,9 @@ func ConvertFile(filePath string, outputPath string) (string, error) {
 	//Creates a slice filled with the relevant arguments to run the FFMPEG exec.Command()
 	//Also logs the literal output of the slice.
 	manualArg := []string{"-i", filePath, "-c:a", "aac", "-f", "adts", outputPath}
-	log.Printf("Literal manualArg slice output: %#v\n", manualArg)
+
+	// consider adding this to debug input or something:
+	// log.Printf("Literal manualArg slice output: %#v\n", manualArg)
 
 	// exec.Command lets us compile a command as an object before we execute it.
 	// that way we can programatically construct them!

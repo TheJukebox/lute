@@ -15,6 +15,7 @@ import (
 )
 
 func debugSetup() {
+	log.Printf("Creating debug folders...")
 	os.Mkdir("uploads/raw", 0700)
 	os.Mkdir("uploads/converted", 0700)
 }

@@ -68,6 +68,19 @@ func forbiddenChars(s string) (bool, error) {
 // This handler is for validating that the file CAN be uploaded
 // so we want to do things like create locks here!
 func (s *UploadService) StartUpload(_ context.Context, request *uploadPb.UploadRequest) (*uploadPb.UploadResponse, error) {
+	// Check the validity of the filename
+	valid, err := forbiddenChars(request.GetFileName())
+	if err != nil {
+		log.Printf("Failed to check the validity of the filename: '%v'", request.GetFileName())
+		return nil, err
+	}
+	if !valid {
+		log.Printf("Upload has invalid filename: '%v'", request.GetFileName())
+		return nil, &apiErrors.IllegalFileName{
+			Filename: request.GetFileName(),
+		}
+	}
+
 	// generate an ID
 	file_id := uuid.NewString()
 	uploads[file_id] = request
@@ -75,6 +88,7 @@ func (s *UploadService) StartUpload(_ context.Context, request *uploadPb.UploadR
 
 	os.Create(fmt.Sprintf("uploads/raw/%v", request.GetFileName()))
 
+	// Return a file ID, ready for chunks to be written
 	return &uploadPb.UploadResponse{
 		FileId: file_id,
 	}, nil
@@ -91,20 +105,26 @@ func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*
 		}
 	}
 
+	// create the paths for the file
 	filename := fmt.Sprintf("uploads/raw/%v", request.GetFileName())
 	output_path := strings.Split(request.GetFileName(), ".")[0] + ".aac"
 	output_path = fmt.Sprintf("uploads/converted/%v", output_path)
+
+	// Open the file for writing
 	output, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0700)
 	if err != nil {
 		log.Printf("(%v) failed to upload file: '%v':\n\t%v", file_id, filename, err)
 		return nil, err
 	}
+
 	_, err = output.Write(chunk.GetData())
 	if err != nil {
 		log.Printf("(%v) Failed to write chunk: %v", file_id, err)
 		return nil, err
 	}
 	log.Printf("(%v) Got chunk of size: %v", file_id, len(chunk.GetData()))
+
+	// Handle closing the upload process
 	if chunk.GetFinal() {
 		log.Printf("(%v) Final chunk received for file: '%v'", file_id, filename)
 		converted_path, err := convert.ConvertFile(filename, output_path)
@@ -112,56 +132,13 @@ func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*
 			log.Printf("(%v) Upload failed: %v", file_id, err)
 		}
 		log.Printf("(%v) Finished conversion: %v", file_id, converted_path)
+
+		// We're done working with this file, so delete it from the map
+		delete(uploads, request.GetFileName())
 	}
+
 	return &uploadPb.ChunkResponse{
 		Success: true,
 		Message: "Received chunk!",
 	}, nil
 }
-
-// func (s *UploadService) FileUpload(_ context.Context, file *uploadPb.FileUploadRequest) (*uploadPb.FileUploadResponse, error) {
-// 	log.Printf("Received a file upload request...")
-// 	filename := file.GetFileName()
-// 	data := file.GetFileData()
-//
-// 	// Validate the filename
-// 	validName, err := forbiddenChars(filename)
-// 	if err != nil {
-// 		log.Printf("Unable to parse filename: '%v'", filename)
-// 		return nil, err
-// 	} else if !validName {
-// 		log.Printf("Invalid filename: '%v'", filename)
-// 		return nil, &apiErrors.IllegalFileName{Filename: filename}
-// 	}
-//
-// 	// We should ensure that the data is the right format too.
-// 	// We'll have to investigate how best to do that - magic bytes?
-//
-// 	// Try to write the file
-// 	filename = fmt.Sprintf("uploads/raw/%v", filename)
-// 	outputPath := fmt.Sprintf("uploads/converted/%v", strings.Split(filename, "/")[2])
-// 	output, err := os.Create(filename)
-// 	if err != nil {
-// 		log.Printf("Could not open file for write: %s\n", filename)
-// 		return &uploadPb.FileUploadResponse{Success: false, Message: "File failed to upload: could not open file for write"}, err
-// 	}
-// 	defer output.Close()
-//
-// 	_, err = output.Write(data)
-// 	if err != nil {
-// 		log.Printf("Could not write file: %s\n", filename)
-// 		return &uploadPb.FileUploadResponse{Success: false, Message: "Failed to write file."}, err
-// 	}
-//
-// 	// Perform file conversion
-// 	result, err := convert.ConvertFile(filename, outputPath)
-// 	if err != nil {
-// 		log.Printf("Failed to convert file '%v'! Cleaning up...", filename)
-// 		os.Remove(filename)
-// 		return nil, err
-// 	}
-// 	log.Printf("Created file '%v'", result)
-//
-// 	return &uploadPb.FileUploadResponse{Success: true, Message: "Successfully uploaded"}, nil
-// }
-//

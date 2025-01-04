@@ -83,55 +83,109 @@
 	onmousemove={(event => seek(event))}
 ></svelte:window>
 
-<div class='player' class:paused>
-	<audio>
-	</audio>
-	<div class='albumArt'>
-	</div>
-	<div class='details'>
-		<p class='title'>Weezer Does Weezer</p>
-		<p class='artist'>Weezer</p>
-		<p class='album'>Weezer: The Weezer Years</p>
-	</div>
-	<div class='seekbar' id="seekbar"
-		onmousedown={() => mouseDown = true }
-		onmouseup={() => mouseDown = false }
-		onmousemove={(event) => seek(event)}
-		role="slider"
-		aria-valuenow=0
-		aria-valuemin=0
-		aria-valuemax=100
-		tabindex=0
-	>
-		<span class='seekbar' id="seekFill" style="width: 0%">
-			<div class='playhead' id="playhead"></div>
-		</span>
-	</div>
-	<div class='controls'>
-		<button 
-			class='previous'
-			aria-label='previous'
-			onclick={startStream}
-		>prev</button>
-		<button 
-			class='pause'
-			onclick={toggle}
-			aria-label={paused ? 'play' : 'pause'}
-		></button>
-		<button 
-			class='next'
-			aria-label='next'
-		>next</button>
+<div class='banner'>
+	<a href="/" class="logo">
+		<img src="./assets/logo_lute.svg" class="logo" alt="Home"/>
+		<span><h1>LUTE</h1></span>
+	</a>
+	<div class='player' class:paused>
+		<audio>
+		</audio>
+		<div class='albumArt'>
+			<span>?</span>
+		</div>
+		<div class='details'>
+			<p class='title'>--</p>
+			<p class='artist'>--</p>
+			<p class='album'>--</p>
+		</div>
+		<div class='seekbar' id="seekbar"
+			onmousedown={() => mouseDown = true }
+			onmouseup={() => mouseDown = false }
+			onmousemove={(event) => seek(event)}
+			role="slider"
+			aria-valuenow=0
+			aria-valuemin=0
+			aria-valuemax=100
+			tabindex=0
+		>
+			<span class='seekbar' id="seekFill" style="width: 0%">
+				<div class='playhead' id="playhead"></div>
+			</span>
+		</div>
+		<div class='controls'>
+			<button 
+				class='previous'
+				aria-label='previous'
+				
+			></button>
+			<button 
+				class='pause'
+				onclick={toggle}
+				aria-label={paused ? 'play' : 'pause'}
+			></button>
+			<button 
+				class='next'
+				aria-label='next'
+				onclick={startStream}
+			></button>
+		</div>
 	</div>
 </div>
 
+
 <style>
+	:root {
+		--indigo-dye: #124e78ff;
+		--goldenrod: #d5a021ff;
+		--alabaster: #ede7d9ff;
+		--viridian: #6a8e7fff;
+		--viridian-dark: rgb(81, 121, 104);	
+		--viridian-darker: rgb(61, 91, 78);	
+		--bright-pink-crayola: #ea526fff;
+	}
+
+	.banner {
+		background-color: var(--viridian);
+		position: fixed;
+		top: 0;
+		left: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1;
+		width: 100%;
+		height: 100px;
+		box-shadow: 0 0px 10px rgba(0, 0, 0, 0.5);
+	}
+
+	.logo img{
+		position: absolute;
+		left: 0;
+		top: 5%;
+		height: 100px;
+		width: auto;
+		transform-origin: top right;
+	}
+	.logo span{
+		position: absolute;
+		font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+		font-size: larger;
+		color: var(--goldenrod);
+		left: 20px;
+		top: 38%;
+		transform-origin: top right;
+		text-shadow: 0px 0px 8px rgba(0, 0, 0, 256);
+	}
+
 	.player {
 		position: relative;
-		border: 2px dashed #000;
 		width: 600px;
-		height: 100px;
-		background-color: #f9f9f9;
+		height: 90px;
+		background-color: var(--viridian-dark);
+		border-radius: 1px;
+		z-index: 2;
+		box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.3);
 	}
 
 	.controls {
@@ -139,12 +193,13 @@
 		display: flex;
 		width: 200px;
 		height: 30px;
-		background-color:#a0a0a0;
-		border: 2px dashed #000;	
 		left: 200px;
-		top: 105px;
+		top: 98px;
 		justify-content: center;
 		align-items: center;
+		z-index: 10;
+		background-color: var(--bright-pink-crayola);
+		border-radius: 10px;
 	}
 
 	.pause {
@@ -154,6 +209,32 @@
 		background-repeat: no-repeat;
 		background-position: 50% 50%;
 		border-radius: 50%;
+		border-color: var(--goldenrod);
+		border-width: 0px;
+	}
+
+	.next {
+		width: 15%;
+		aspect-ratio: 1;
+		background: none;
+		background-repeat: no-repeat;
+		background-position: 50% 50%;
+		border-radius: 50%;
+		border-color: var(--goldenrod);
+		border-width: 0px;
+		background-image: url(./assets/skip_next.svg);
+	}
+
+	.previous {
+		width: 15%;
+		aspect-ratio: 1;
+		background: none;
+		background-repeat: no-repeat;
+		background-position: 50% 50%;
+		border-radius: 50%;
+		border-color: var(--goldenrod);
+		border-width: 0px;
+		background-image: url(./assets/skip_previous.svg);
 	}
 
 	[aria-label="pause"] {
@@ -166,31 +247,41 @@
 
 	.albumArt {
 		position: absolute;
-		height: 90%;
-		width: 90px;
-		border: 0px solid #15ff00;
-		background-color: #ff0000;
+		height: 88%;
+		width: 15%;
+		margin: 1px 0px 2px 2px;
+		background-color: var(--viridian-darker);
+		border-radius: 1px;
 	}
 	
+	.albumArt span{
+		font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+		font-size: 50pt;
+		display: table;
+		margin: 0 auto;	
+		margin-top: 5%;
+		color: var(--goldenrod);
+		user-select: none; 
+	}
 	.seekbar {
 		position: absolute;
-		bottom: 0;
+		bottom: 0px;
 		height: 10%;
 		width: 100%;
-		border: 0px solid #00bbff;
-		background-color: #8b8b8b;
+		background-color: var(--viridian-darker);
 	}
 
 	.seekbar span{
 		min-width: 0;
 		max-width: 100%;
 		height: 100%;
-		background-color: #15ff00;
+		background-color: var(--indigo-dye);
+		box-shadow: 0 0 10px rgba(0, 136, 255, 0.8);
 	}
 
 	.playhead {
 		position: absolute;
-		right: 0px;
+		right: -2px;
 		height: 100%;
 		width: 5px;
 		background-color: #252525;
@@ -205,24 +296,28 @@
 		bottom: 10%;
 		top: 0;
 		justify-content: start;
-		background-color: #ffffff;
+		border-radius: 5px;
 	}
 	
 	.title {
+		font-family: 'Segoe UI Bold', Tahoma, Geneva, Verdana, sans-serif;
 		font-size: medium;
-		margin: 2px 10px 0 2px;
+		margin: 5px 10px 0 5px;
+		color: #000000;
 	}
 	
 	.artist {
+		font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 		font-size: medium;
-		margin: 0 10px 0 2px;
+		margin: 0px 10px 2px 5px;
 	}
 
 	.album {
+		font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 		position: absolute;
 		bottom: 0;
 		font-size: small;
-		margin: 0;
+		margin: 0px 10px 2px 5px;
 		font-style: oblique;
 	}
 </style>

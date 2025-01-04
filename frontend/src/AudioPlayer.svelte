@@ -282,7 +282,7 @@
 		max-width: 100%;
 		height: 100%;
 		background-color: var(--bright-pink-crayola);
-		box-shadow: 0 0 10px rgba(255, 0, 191, 0.8);
+		box-shadow: 0 0 2px rgba(255, 0, 191, 0.4);
 	}
 
 	.playhead {

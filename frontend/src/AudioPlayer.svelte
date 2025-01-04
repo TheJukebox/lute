@@ -99,6 +99,9 @@
 			<p class='artist'>--</p>
 			<p class='album'>--</p>
 		</div>
+		<div class='time'>
+			0:00/0:00
+		</div>
 		<div class='seekbar' id="seekbar"
 			onmousedown={() => mouseDown = true }
 			onmouseup={() => mouseDown = false }
@@ -166,6 +169,7 @@
 		height: 100px;
 		width: auto;
 		transform-origin: top right;
+		user-select: none; 
 	}
 	.logo span{
 		position: absolute;
@@ -176,6 +180,7 @@
 		top: 38%;
 		transform-origin: top right;
 		text-shadow: 0px 0px 8px rgba(0, 0, 0, 256);
+		user-select: none; 
 	}
 
 	.player {
@@ -200,6 +205,7 @@
 		z-index: 10;
 		background-color: var(--bright-pink-crayola);
 		border-radius: 10px;
+		box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.3);
 	}
 
 	.pause {
@@ -275,16 +281,18 @@
 		min-width: 0;
 		max-width: 100%;
 		height: 100%;
-		background-color: var(--indigo-dye);
-		box-shadow: 0 0 10px rgba(0, 136, 255, 0.8);
+		background-color: var(--bright-pink-crayola);
+		box-shadow: 0 0 10px rgba(255, 0, 191, 0.8);
 	}
 
 	.playhead {
 		position: absolute;
-		right: -2px;
+		right: -4px;
 		height: 100%;
 		width: 5px;
-		background-color: #252525;
+		background-color: var(--goldenrod);
+		border-radius: 2px;
+		border-width: 0px;
 	}
 
 	.details {
@@ -303,21 +311,33 @@
 		font-family: 'Segoe UI Bold', Tahoma, Geneva, Verdana, sans-serif;
 		font-size: medium;
 		margin: 5px 10px 0 5px;
-		color: #000000;
+		color: var(--indigo-dye);
 	}
 	
 	.artist {
 		font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		color: var(--indigo-dye);
 		font-size: medium;
 		margin: 0px 10px 2px 5px;
 	}
 
 	.album {
 		font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		color: var(--indigo-dye);
 		position: absolute;
 		bottom: 0;
 		font-size: small;
 		margin: 0px 10px 2px 5px;
 		font-style: oblique;
+	}
+
+	.time {
+		font-family: 'Segoe UI Bold', Tahoma, Geneva, Verdana, sans-serif;
+		font-size: small;
+		z-index: 100px;
+		position: relative;
+		margin: 60px 0px 50px 89%;
+		color: var(--indigo-dye);
+		user-select: none; 
 	}
 </style>

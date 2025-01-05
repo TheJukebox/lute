@@ -1,5 +1,8 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
+    import { startStream } from '../../audioStore';
+    
+    import type { Track } from '../../audioStore';
 
     type SongData = {
         id: number;
@@ -7,20 +10,22 @@
         artist: string;
         album: string;
         num: number;
+        path: string;
     }
 
     // some fake song data
     let songs: SongData[] = [
-        { id: 1, title: 'song1', artist: 'artist', album: 'album', num: 1 },
-        { id: 2, title: 'song2', artist: 'artist2', album: 'album', num: 1 },
-        { id: 3, title: 'song3', artist: 'artist3', album: 'album', num: 1 },
+        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/conmverted/SomethingInTheWay.aac" },
+        { id: 2, title: 'song2', artist: 'artist2', album: 'album', num: 1, path: "" },
+        { id: 3, title: 'song3', artist: 'artist3', album: 'album', num: 1, path: ""},
     ];
 </script>
   
 
 <div>
-    <AudioPlayer src='https://sveltejs.github.io/assets/music/strauss.mp3' title='The Blue Danube Waltz' artist='Johann Strauss' ></AudioPlayer>
+    <AudioPlayer></AudioPlayer>
 </div>
+
 <div class='title'>
     <h1>Your Library</h1>
 </div>
@@ -37,7 +42,7 @@
         </thead>
         <tbody>
             {#each songs as song}
-                <tr class='table_entry'> 
+                <tr class='table_entry' on:click={() => startStream("uploads/converted/SomethingInTheWay.aac", song.title, song.artist, song.album )}> 
                     <td>{song.title}</td>
                     <td>00:00</td>
                     <td>{song.artist}</td>

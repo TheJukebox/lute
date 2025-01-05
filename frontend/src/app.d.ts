@@ -10,4 +10,12 @@ declare global {
 	}
 }
 
+declare function startStream(
+	path: string,
+	newTitle: string,
+	newArtist: string,
+	newAlbum: string,
+	newTime: number
+): void;
+
 export {};

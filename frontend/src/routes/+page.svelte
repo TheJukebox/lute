@@ -2,7 +2,7 @@
 	import AudioPlayer from "../AudioPlayer.svelte";
 </script>
 <div>
-	<AudioPlayer src="https://sveltejs.github.io/assets/music/strauss.mp3" title="The Blue Danube Waltz" artist="Johann Strauss" ></AudioPlayer>
+	<AudioPlayer></AudioPlayer>
 </div>
 <div class="content">
 	<div class="big_logo">

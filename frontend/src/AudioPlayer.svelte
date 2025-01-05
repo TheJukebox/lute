@@ -1,31 +1,30 @@
 <script lang='ts'>
-	import { fetchStream, togglePlayback } from '$lib/audio_processing';
-	let { src, title, artist } = $props();
+	import { onDestroy } from 'svelte';
+	import { playing, toggleStream } from './audioStore';
 
-	let time: number = $state(0);
-	let duration: number = $state(0);
-	let paused: boolean = $state(true);
+	import type { Track } from './audioStore'
+	import type { Writable } from 'svelte/store';
 
-	let mouseDown: boolean = false;
+	let mouseDown: boolean = false;	
 
-	/**
-	 * Fetches and starts a stream.
-	 * @function
-	 */
-	function startStream(): void {
-		paused = !paused
-		fetchStream('http://127.0.0.1:8080', '../../output.aac', 'test-session');
-		togglePlayback();
-	}
-	
+	let track: Track;
+	let paused: boolean = true;
+	const unsubscribe = playing.subscribe(value => {
+		track = value;
+	});
+
+	onDestroy(() => {
+		unsubscribe();
+	});
 
 	/**
 	 * Toggles playback of the stream.
 	 * @function
 	 */
 	function toggle(): void {
-		paused = !paused
-		togglePlayback();
+		track.paused = !track.paused;
+		paused = !paused;
+		toggleStream();
 	}
 
 	/**
@@ -88,20 +87,25 @@
 		<img src="./assets/logo_lute.svg" class="logo" alt="Home"/>
 		<span><h1>LUTE</h1></span>
 	</a>
+
 	<div class='player' class:paused>
 		<audio>
 		</audio>
+
 		<div class='albumArt'>
 			<span>?</span>
 		</div>
+
 		<div class='details'>
-			<p class='title'>--</p>
-			<p class='artist'>--</p>
-			<p class='album'>--</p>
+			<p class='title'>{track.title}</p>
+			<p class='artist'>{track.artist}</p>
+			<p class='album'>{track.album}</p>
 		</div>
+
 		<div class='time'>
 			0:00/0:00
 		</div>
+
 		<div class='seekbar' id="seekbar"
 			onmousedown={() => mouseDown = true }
 			onmouseup={() => mouseDown = false }
@@ -116,6 +120,7 @@
 				<div class='playhead' id="playhead"></div>
 			</span>
 		</div>
+
 		<div class='controls'>
 			<button 
 				class='previous'
@@ -125,14 +130,14 @@
 			<button 
 				class='pause'
 				onclick={toggle}
-				aria-label={paused ? 'play' : 'pause'}
+				aria-label={track.paused ? 'play' : 'pause'}
 			></button>
 			<button 
 				class='next'
 				aria-label='next'
-				onclick={startStream}
 			></button>
 		</div>
+
 	</div>
 </div>
 

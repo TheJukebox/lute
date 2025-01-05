@@ -1,1 +1,10 @@
+certifi==2024.8.30
+charset-normalizer==3.4.0
 click==8.1.7
+grpcio==1.68.1
+grpcio-tools==1.68.1
+idna==3.10
+protobuf==5.29.2
+requests==2.32.3
+setuptools==75.6.0
+urllib3==2.2.3

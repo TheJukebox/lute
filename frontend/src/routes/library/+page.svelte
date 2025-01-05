@@ -106,6 +106,10 @@
         cursor: pointer;
     }
 
+    .table_entry:active {
+        color: var(--indigo-dye);
+    }
+
     .table_entry td {
         padding: 0.75rem;
         text-align: left;

@@ -189,6 +189,10 @@
 		user-select: none; 
 	}
 
+	.logo span:active {
+		color: var(--indigo-dye);
+	}
+
 	.player {
 		position: relative;
 		width: 600px;

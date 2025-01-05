@@ -13,10 +13,12 @@
 		You stand in a vast chamber. A Lute rests upon a pedestal. Play it?
 	</p>
 	<ul class='menu'>
-		<li>
-			<img src='./assets/library.svg' alt='Your library'/>
-			<span><a href='/library'>Your Library</a></span>
-		</li>
+		<a href='/library'>
+			<li>
+				<img src='./assets/library.svg' alt='Your library'/>
+				<span>Your Library</span>
+			</li>
+		</a>
 	</ul>
 </div>
 
@@ -62,6 +64,16 @@
 		margin-left: 25%;
 		display: flex;
 		align-items: center;
+		gap: 20px;
+	}
+
+	.menu a {
+		text-decoration: none;
+		color: var(--viridian);
+	}
+
+	.menu a:active {
+		color: var(--indigo-dye);
 	}
 
 	.menu li {

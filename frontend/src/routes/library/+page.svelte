@@ -1,8 +1,8 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
-    import { startStream } from '../../audioStore';
+    import { startStream } from '../../audio_store';
     
-    import type { Track } from '../../audioStore';
+    import type { Track } from '../../audio_store';
 
     type SongData = {
         id: number;
@@ -42,7 +42,7 @@
         </thead>
         <tbody>
             {#each songs as song}
-                <tr class='table_entry' on:click={() => startStream("uploads/converted/SomethingInTheWay.aac", song.title, song.artist, song.album )}> 
+                <tr class='table_entry' on:click={() => startStream("uploads/converted/SomethingInTheWay.aac", song.title, song.artist, song.album)}> 
                     <td>{song.title}</td>
                     <td>00:00</td>
                     <td>{song.artist}</td>
@@ -103,6 +103,7 @@
 
     .table_entry:hover {
         color: var(--viridian);
+        cursor: pointer;
     }
 
     .table_entry td {

@@ -1,8 +1,8 @@
 <script lang='ts'>
 	import { onDestroy } from 'svelte';
-	import { playing, toggleStream } from './audioStore';
+	import { playing, toggleStream } from './audio_store';
 
-	import type { Track } from './audioStore'
+	import type { Track } from './audio_store'
 	import type { Writable } from 'svelte/store';
 
 	let mouseDown: boolean = false;	
@@ -212,6 +212,11 @@
 		background-color: var(--bright-pink-crayola);
 		border-radius: 10px;
 		box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.3);
+	}
+
+	.controls button:hover {
+		filter: invert(75%);
+		cursor: pointer;
 	}
 
 	.pause {

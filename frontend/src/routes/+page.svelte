@@ -12,9 +12,25 @@
 	<p>
 		You stand in a vast chamber. A Lute rests upon a pedestal. Play it?
 	</p>
+	<ul class='menu'>
+		<li>
+			<img src='./assets/library.svg' alt='Your library'/>
+			<span><a href='/library'>Your Library</a></span>
+		</li>
+	</ul>
 </div>
 
 <style>
+	:root {
+		--indigo-dye: #124e78ff;
+		--goldenrod: #d5a021ff;
+		--alabaster: #ede7d9ff;
+		--viridian: #6a8e7fff;
+		--viridian-dark: rgb(81, 121, 104);	
+		--viridian-darker: rgb(61, 91, 78);	
+		--bright-pink-crayola: #ea526fff;
+	}
+
 	.big_logo {
 		text-align: center;
 	}
@@ -36,5 +52,24 @@
 	}
 	.content {
 		margin-top: 10%;
+	}
+
+	.menu {
+		color: var(--indigo-dye);
+		font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		font-size: x-large;
+		font-weight: bolder;
+		margin-left: 25%;
+		display: flex;
+		align-items: center;
+	}
+
+	.menu li {
+		list-style: none;
+		line-height: 24px;
+	}
+
+	.menu img{
+		filter: invert(100%);	
 	}
 </style>

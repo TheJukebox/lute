@@ -171,6 +171,7 @@
 		transform-origin: top right;
 		user-select: none; 
 	}
+
 	.logo span{
 		position: absolute;
 		font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;

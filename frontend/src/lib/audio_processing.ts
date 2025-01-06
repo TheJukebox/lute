@@ -14,13 +14,34 @@ let chunkQueue: Uint8Array = new Uint8Array(0);
 
 
 /**
- * Convenience function that pauses execution for the desired amount of milliseconds.
- * @function
- * @param ms {number}   The time to sleep in milliseconds.
- * @returns {Promise<void>}   Returns a promise to halt execution until the time has elapsed.
+ * Recursive function to playback queued audio.
+ * @function 
+ * @returns {void}  Returns if there is nothing valid in the buffer or playback is paused.
  */
-function sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+function playFromBuffer(delay: number = 0): void {
+    if (context === null) {
+        context = new AudioContext({"sampleRate": 44100, "latencyHint": "interactive"}); 
+    }
+
+    const next: AudioBuffer | null | undefined = audioBuffer.shift();
+    if (next === null || next === undefined) {
+        return;
+    }
+
+    const source: AudioBufferSourceNode = context.createBufferSource();
+    const gain: GainNode = context.createGain();
+    source.connect(gain);
+    gain.connect(context.destination);
+
+    const fadeTime: number = 0.0050; 
+
+    gain.gain.setTargetAtTime(0, context.currentTime + next.duration - fadeTime, fadeTime);
+
+    source.buffer = next; 
+    currentNode = source;
+
+    source.start(delay);
+    if (playing) playFromBuffer(delay + next.duration - fadeTime);
 }
 
 /**
@@ -49,7 +70,7 @@ export async function togglePlayback(): Promise<void> {
     if (playing) {
         console.log("Stream playing.");
         await playbackReady();
-        playFromBuffer();
+        playFromBuffer(0);
     } else {
         if (currentNode) {
             currentNode.stop();
@@ -57,45 +78,6 @@ export async function togglePlayback(): Promise<void> {
         console.log("Stream paused.");
     }
 }
-
-/**
- * Recursive function to playback queued audio.
- * @function 
- * @returns {void}  Returns if there is nothing valid in the buffer or playback is paused.
- */
-function playFromBuffer(): void {
-    // if we aren't meant to be playing, bail out
-    if (!playing) { 
-        // we need to handle stopping better, otherwise we'll lose
-        // a tiny bit of time whenever we pause.
-        return;
-    }
-
-    if (context === null) {
-        console.log("CREATED NEW CONTEXT");
-        // potentially need to set sampleRate option: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-samplerate
-        // by default it should use the target device's preferred sample rate
-        context = new AudioContext({"sampleRate": 44100, "latencyHint": "balanced"}); 
-    }
-    const source: AudioBufferSourceNode = context.createBufferSource();
-    currentNode = source;
-    const next: AudioBuffer | null | undefined = audioBuffer.shift();
-    if (next === null || next === undefined) {
-        return;
-    }
-    
-    source.buffer = next; 
-    // @ts-ignore - context will not be null, even though ts thinks it could be
-    source.connect(context.destination);
-    source.start();
-
-    source.onended = () => {
-        source.stop();
-        source.disconnect();
-        playFromBuffer();
-    }
-}
-
 
 /**
  * Decodes audio from an array of binary data.
@@ -107,15 +89,13 @@ function playFromBuffer(): void {
 async function decodeAudio(data: Uint8Array) : Promise<AudioBuffer> {
     // we defer the creation of the AudioContext to avoid "autoplay" policy.
     if (!context) {
-        console.log("CREATED NEW CONTEXT");
         // potentially need to set sampleRate option: https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-samplerate
         // by default it should use the target device's preferred sample rate
-        context = new AudioContext({"sampleRate": 44100, "latencyHint": "balanced"}); 
+        context = new AudioContext({"sampleRate": 44100, "latencyHint": "playback"}); 
     }
     const buff: ArrayBuffer = data.buffer as ArrayBuffer;
     return await context.decodeAudioData(buff);
 }
-
 
 
 /**
@@ -286,4 +266,14 @@ function concatArrays(x: Uint8Array, y: Uint8Array): Uint8Array {
     combinedData.set(x);
     combinedData.set(y, x.length);
     return combinedData;
+}
+
+/**
+ * Convenience function that pauses execution for the desired amount of milliseconds.
+ * @function
+ * @param ms {number}   The time to sleep in milliseconds.
+ * @returns {Promise<void>}   Returns a promise to halt execution until the time has elapsed.
+ */
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { fetchStream, togglePlayback } from '$lib/audio_processing';
+import { fetchStream, togglePlayback } from '$lib/stream_handler';
 
 export interface Track {
     path: string;

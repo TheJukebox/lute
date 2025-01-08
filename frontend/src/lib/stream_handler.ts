@@ -8,6 +8,7 @@ let context: AudioContext | null = null;
 // Stream control
 let playing: boolean = false;
 let currentNode: AudioBufferSourceNode | null = null;
+let currentGain: GainNode | null = null;
 let currentTime: number = 0;
 let intervalId: number = 0;
 
@@ -33,21 +34,35 @@ function createAudioContext(): AudioContext {
 
 async function playBuffer(offset: number = 0): Promise<void> {
     if (!context) context = createAudioContext();
-    const source: AudioBufferSourceNode = context.createBufferSource();
     if (!playbackBuffer) {
         return;
     }
 
     clearInterval(intervalId);
 
+    const source: AudioBufferSourceNode = context.createBufferSource();
+    const gainNode = context.createGain();
     source.buffer = playbackBuffer;
+    gainNode.connect(context.destination);
+    source.connect(gainNode);
     currentNode = source;
+    currentGain = gainNode;
+
+    // fade in/out between buffers
+    // needs tweaking.
+    gainNode.gain.setValueAtTime(0, 0);
+    gainNode.gain.setTargetAtTime(1, context.currentTime + 0.02, 0.02);
+    gainNode.gain.setTargetAtTime(0, source.buffer.duration - 0.02, 0.02);
+
     console.debug("Playing: ", source.buffer);
-    source.connect(context.destination);
+
     source.start(0, offset);
 
     source.onended = () => {
         if (playing) playBuffer(source.buffer?.duration);
+        currentTime = context?.currentTime;
+        source.disconnect();
+        gainNode.disconnect(); 
     };
 }
 
@@ -56,10 +71,11 @@ export async function togglePlayback(): Promise<void> {
     playing = !playing;
     if (playing) {
         console.debug("Starting playback");
-        intervalId = setInterval(playBuffer, 1);
+        intervalId = setInterval(playBuffer, 1, currentTime);
     } else {
         console.debug("Stopping playback");
-        currentNode?.stop();
+        currentGain?.gain.setTargetAtTime(0, currentTime, 1);
+        currentNode?.stop(1);
     }
 }
 

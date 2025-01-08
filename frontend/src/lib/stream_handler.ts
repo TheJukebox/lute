@@ -1,4 +1,5 @@
 import '$lib/gen/stream_grpc_web_pb';
+
 import type { ClientReadableStream } from 'grpc-web';
 
 // Global audio context
@@ -8,15 +9,16 @@ let context: AudioContext | null = null;
 let playing: boolean = false;
 let currentNode: AudioBufferSourceNode | null = null;
 let currentTime: number = 0;
+let intervalId: number = 0;
 
 // Audio data
-let audioData: Uint8Array = new Uint8Array(0);
-let audioBuffer: AudioBuffer | null = null;
-let sequence: number = 1;
+let playbackBuffer: AudioBuffer | null = null;
+let frameBuffer: Uint8Array = new Uint8Array(0);
 
 // Chunks
 let chunkBuffer: Uint8Array = new Uint8Array(0);
-let frame: Uint8Array = new Uint8Array(0);
+let workingFrame: Uint8Array = new Uint8Array(0);
+let nextSeq: number = 1;
 
 
 function createAudioContext(): AudioContext {
@@ -28,85 +30,71 @@ function createAudioContext(): AudioContext {
     return context;
 }
 
-async function enqueueAudioData(seq: number, data: Uint8Array): Promise<void> {
-    return new Promise(resolve => {
-        setInterval(() => {
-            if (seq === sequence) {
-                sequence += seq + 1;
-                audioData = concatArrays(audioData, data);
-                resolve();
-            }
-        });
-    });
-}
-
-async function dataAvailable(): Promise<void> {
-    return new Promise(resolve => {
-        setInterval(() => {
-            if (audioData.length > 0) resolve();
-        });
-    });
-}
-
-async function decodeBuffer(): Promise<void> {
-    if (!context) context = createAudioContext();
-    await dataAvailable()
-    console.debug("Decoding buffer: ", audioData);
-    audioBuffer = await context.decodeAudioData(audioData.subarray().buffer as ArrayBuffer);
-    audioData = new Uint8Array(0);
-};
-
-async function bufferReady(): Promise<void> {
-    return new Promise(resolve => {
-        setInterval(() => {
-            if (audioBuffer && audioBuffer.length > 0) {
-                resolve();
-            }
-        });
-    });
-}
-
 
 async function playBuffer(offset: number = 0): Promise<void> {
-    console.log("Waiting for buffer...");
-    await bufferReady();
     if (!context) context = createAudioContext();
-
-    if (!audioBuffer) {
+    const source: AudioBufferSourceNode = context.createBufferSource();
+    if (!playbackBuffer) {
         return;
     }
-    const next: AudioBuffer = audioBuffer;
-    console.log("Playing from buffer: ", next);
 
-    const source: AudioBufferSourceNode = context.createBufferSource();
-    const duration = next.duration;
+    clearInterval(intervalId);
 
-    source.buffer = next;
+    source.buffer = playbackBuffer;
+    currentNode = source;
+    console.debug("Playing: ", source.buffer);
     source.connect(context.destination);
+    source.start(0, offset);
 
-    source.start(0, 0, duration);
+    source.onended = () => {
+        if (playing) playBuffer(source.buffer?.duration);
+    };
 }
+
 
 export async function togglePlayback(): Promise<void> {
     playing = !playing;
     if (playing) {
-        console.debug("Toggling playback on.");
-        decodeBuffer();
-        playBuffer();
-     } else {
-        console.debug("Toggling playback off.");
-        if (currentNode) {
-            if (currentNode.buffer && audioBuffer) {
-                audioBuffer = concatAudioBuffers(currentNode.buffer, audioBuffer);
-            } else if (currentNode.buffer) {
-                audioBuffer = currentNode.buffer;
-            }
-            currentNode.stop();
-        }
-     }
+        console.debug("Starting playback");
+        intervalId = setInterval(playBuffer, 1);
+    } else {
+        console.debug("Stopping playback");
+        currentNode?.stop();
+    }
 }
 
-export async function fetchStream(host: string, path: string, sessionId: string): Promise<void> {   
+
+async function awaitPrevious(seq: number): Promise<void> {
+    return new Promise(resolve => {
+        setInterval(() => {
+            if (seq === nextSeq) {
+                nextSeq = seq + 1;
+                resolve();
+            }
+        }, 10);
+    })
+}
+
+
+async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
+    await awaitPrevious(seq);
+    frameBuffer = concatArrays(frameBuffer, frame);
+    if (frameBuffer.length > 1000) {
+        const frameData = frameBuffer.slice();
+        const data: ArrayBuffer = frameData.buffer as ArrayBuffer;
+        decodeBuffer(data);
+    }
+}
+
+
+async function decodeBuffer(data: ArrayBuffer): Promise<void> {
+    if (!context) context = createAudioContext();
+    const audio: AudioBuffer = await context.decodeAudioData(data);
+    playbackBuffer = audio;
+};
+
+
+export function fetchStream(host: string, path: string, sessionId: string): void {   
     const service: proto.stream.AudioStreamClient = new proto.stream.AudioStreamClient(
         host,
         null,
@@ -120,7 +108,7 @@ export async function fetchStream(host: string, path: string, sessionId: string)
     console.info(`(${host}) (${sessionId}) Requestion stream for '${path}'...`);
     const audioStream: ClientReadableStream<proto.stream.AudioStreamChunk> = service.streamAudio(request, null);
 
-    audioStream.on('data', async (response: proto.stream.AudioStreamChunk) => {
+    audioStream.on('data', (response: proto.stream.AudioStreamChunk) => {
         // @ts-ignore: this won't be a string
         let chunk: Uint8Array = response.getData();
         let seq: number = response.getSequence();
@@ -131,19 +119,20 @@ export async function fetchStream(host: string, path: string, sessionId: string)
         let ADTSindex: number = containsADTSHeader(chunk);
         
         // Slice the data just before the detected frame and add it to the previously detected one.
-        if (ADTSindex > 0 && frame.length > 0) {
-            const data = concatArrays(frame, chunk.slice(0, ADTSindex));
-            await enqueueAudioData(seq, data);
-            frame = chunk.slice(ADTSindex); // set the new frame
+        if (ADTSindex > 0 && workingFrame.length > 0) {
+            workingFrame = concatArrays(workingFrame, chunk.slice(0, ADTSindex));
+            bufferFrame(workingFrame, seq);
+
+            workingFrame = chunk.slice(ADTSindex); // set the new frame
         // The new frame is at the start, so we should have a complete frame already buffered.
-        } else if (ADTSindex === 0 && frame.length > 0) {
-            await enqueueAudioData(seq, frame);
-            frame = chunk;
+        } else if (ADTSindex === 0 && workingFrame.length > 0) {
+            bufferFrame(workingFrame, seq);
+            workingFrame = chunk;
         // The first frame.
         } else if (ADTSindex === 0) {
-            frame = chunk;
+            workingFrame = chunk;
         } else if (ADTSindex > 0) {
-            frame = chunk.slice(ADTSindex);
+            workingFrame = chunk.slice(ADTSindex);
         // Finally, we should just throw it in the buffer if it hasn't been handled
         } else {
             chunkBuffer = concatArrays(chunkBuffer, chunk);
@@ -162,14 +151,14 @@ function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null 
         return null;
     };
 
-    let channels = Math.min(x.numberOfChannels, y.numberOfChannels);
+    let channels = Math.min(x.numberOfChannels, y.numberOfChannels); // use the smaller of both to avoid overflow
     let length = x.length + y.length;
-    const combinedData = context?.createBuffer(channels, length, x.sampleRate);
+    const combinedData: AudioBuffer = context.createBuffer(channels, length, x.sampleRate);
 
     for (let i = 0; i < channels; i++) {
-        let channel = combinedData?.getChannelData(i);
-        channel?.set(x.getChannelData(i), 0);
-        channel?.set(y.getChannelData(i), x.length);
+        let channel = combinedData.getChannelData(i);
+        channel.set(x.getChannelData(i), 0);
+        channel.set(y.getChannelData(i), x.length);
     }
 
     return combinedData;
@@ -181,7 +170,7 @@ function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null 
  * @param data {Uint8Array} The data to operate on.
  * @returns {number}        The index that the ADTS header begins at. 
  */
-function containsADTSHeader(data: Uint8Array): number {
+function containsADTSHeader(data: Uint8Array): number { // abaduser: potentially add a bool here to track chunks with no ADTS header?
     for (let i = 0; i < data.length - 7; i++) {
         // Identify the sync word - 12 bits
         if (data[i] === 0xFF && (data[i + 1] & 0xF0) === 0xF0) {

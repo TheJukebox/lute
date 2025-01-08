@@ -1,4 +1,5 @@
 import '$lib/gen/stream_grpc_web_pb';
+import { currentTime } from '../audio_store'
 
 import type { ClientReadableStream } from 'grpc-web';
 
@@ -9,8 +10,8 @@ let context: AudioContext | null = null;
 let playing: boolean = false;
 let currentNode: AudioBufferSourceNode | null = null;
 let currentGain: GainNode | null = null;
-let currentTime: number = 0;
-let intervalId: number = 0;
+let streamIntervalId: number = 0;
+let timeIntervalId: number = 0;
 
 // Audio data
 let playbackBuffer: AudioBuffer | null = null;
@@ -31,6 +32,10 @@ function createAudioContext(): AudioContext {
     return context;
 }
 
+export async function updateCurrentTime(): Promise<void> {
+    if (!context) return;
+    currentTime.set(context.currentTime);
+}
 
 async function playBuffer(offset: number = 0): Promise<void> {
     if (!context) context = createAudioContext();
@@ -38,7 +43,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
         return;
     }
 
-    clearInterval(intervalId);
+    clearInterval(streamIntervalId);
 
     const source: AudioBufferSourceNode = context.createBufferSource();
     const gainNode = context.createGain();
@@ -50,9 +55,10 @@ async function playBuffer(offset: number = 0): Promise<void> {
 
     // fade in/out between buffers
     // needs tweaking.
+    let fadeTime = 0.0015;
     gainNode.gain.setValueAtTime(0, 0);
-    gainNode.gain.setTargetAtTime(1, context.currentTime + 0.02, 0.02);
-    gainNode.gain.setTargetAtTime(0, source.buffer.duration - 0.02, 0.02);
+    gainNode.gain.setTargetAtTime(1, context.currentTime + fadeTime, fadeTime);
+    gainNode.gain.setTargetAtTime(0, source.buffer.duration - fadeTime, fadeTime);
 
     console.debug("Playing: ", source.buffer);
 
@@ -60,8 +66,8 @@ async function playBuffer(offset: number = 0): Promise<void> {
 
     source.onended = () => {
         if (playing) playBuffer(source.buffer?.duration);
-        currentTime = context?.currentTime;
         source.disconnect();
+        currentTime.set(context?.currentTime);
         gainNode.disconnect(); 
     };
 }
@@ -69,13 +75,17 @@ async function playBuffer(offset: number = 0): Promise<void> {
 
 export async function togglePlayback(): Promise<void> {
     playing = !playing;
+    let time = 0;
+    currentTime.subscribe((value: number) => time = value);
     if (playing) {
         console.debug("Starting playback");
-        intervalId = setInterval(playBuffer, 1, currentTime);
+        streamIntervalId = setInterval(playBuffer, 1, time);
+        timeIntervalId = setInterval(updateCurrentTime, 1000);
     } else {
         console.debug("Stopping playback");
-        currentGain?.gain.setTargetAtTime(0, currentTime, 1);
+        currentGain?.gain.setTargetAtTime(0, time, 1);
         currentNode?.stop(1);
+        clearInterval(timeIntervalId);
     }
 }
 

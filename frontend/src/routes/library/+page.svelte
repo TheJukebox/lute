@@ -1,8 +1,14 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
-    import { startStream } from '../../audio_store';
+    import { startStream, currentTime } from '../../audio_store';
+    import { updateCurrentTime } from '$lib/stream_handler';
     
     import type { Track } from '../../audio_store';
+
+    let time = 0;
+    currentTime.subscribe((value: number) => time = value);
+
+    
 
     type SongData = {
         id: number;
@@ -15,7 +21,7 @@
 
     // some fake song data
     let songs: SongData[] = [
-        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/conmverted/SomethingInTheWay.aac" },
+        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/converted/LoveMeTender.aac" },
         { id: 2, title: 'song2', artist: 'artist2', album: 'album', num: 1, path: "" },
         { id: 3, title: 'song3', artist: 'artist3', album: 'album', num: 1, path: ""},
     ];
@@ -42,7 +48,7 @@
         </thead>
         <tbody>
             {#each songs as song}
-                <tr class='table_entry' on:click={() => startStream("uploads/converted/SomethingInTheWay.aac", song.title, song.artist, song.album)}> 
+                <tr class='table_entry' onclick={() => startStream(song.path, song.title, song.artist, song.album)}> 
                     <td>{song.title}</td>
                     <td>00:00</td>
                     <td>{song.artist}</td>
@@ -52,6 +58,7 @@
             {/each}
         </tbody>
     </table>
+    <button onclick={() => setInterval(updateCurrentTime, 1000)}>{time}</button>
 </div>
 
 <style>

@@ -9,6 +9,8 @@ export interface Track {
     paused: boolean;
 }
 
+export const currentTime = writable<number>(0);
+
 export const playing = writable<Track> ({
     path: '',
     title: '--',

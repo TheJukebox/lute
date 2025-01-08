@@ -32,7 +32,6 @@
 	 * @function
 	 */
 	function toggle(): void {
-		console.log("TOGGLIN");
 		track.paused = !track.paused;
 		paused = !paused;
 		togglePlayback();

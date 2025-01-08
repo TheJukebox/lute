@@ -15,7 +15,7 @@ let timeIntervalId: number = 0;
 
 // Audio data
 let playbackBuffer: AudioBuffer | null = null;
-let frameBuffer: Uint8Array = new Uint8Array(0);
+let frameQueue: Array<{seq: number, data: Uint8Array}> = new Array(0);
 
 // Chunks
 let chunkBuffer: Uint8Array = new Uint8Array(0);
@@ -47,20 +47,25 @@ async function playBuffer(offset: number = 0): Promise<void> {
 
     const source: AudioBufferSourceNode = context.createBufferSource();
     const gainNode = context.createGain();
+    const filter = context.createBiquadFilter();
+    filter.type = "lowpass";
     source.buffer = playbackBuffer;
+    filter.connect(gainNode);
     gainNode.connect(context.destination);
     source.connect(gainNode);
+    source.connect(filter);
     currentNode = source;
     currentGain = gainNode;
+
+    filter.frequency.setValueAtTime(1000, context.currentTime);
+    filter.frequency.setValueAtTime(1000, source.buffer.duration);
 
     // fade in/out between buffers
     // needs tweaking.
     let fadeTime = 0.0015;
-    gainNode.gain.setValueAtTime(0, 0);
+    gainNode.gain.setValueAtTime(0, context.currentTime);
     gainNode.gain.setTargetAtTime(1, context.currentTime + fadeTime, fadeTime);
     gainNode.gain.setTargetAtTime(0, source.buffer.duration - fadeTime, fadeTime);
-
-    console.debug("Playing: ", source.buffer);
 
     source.start(0, offset);
 
@@ -83,7 +88,7 @@ export async function togglePlayback(): Promise<void> {
         timeIntervalId = setInterval(updateCurrentTime, 1000);
     } else {
         console.debug("Stopping playback");
-        currentGain?.gain.setTargetAtTime(0, time, 1);
+        currentGain?.gain.setTargetAtTime(0, time - 1, 1);
         currentNode?.stop(1);
         clearInterval(timeIntervalId);
     }
@@ -104,11 +109,18 @@ async function awaitPrevious(seq: number): Promise<void> {
 
 async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
     await awaitPrevious(seq);
-    frameBuffer = concatArrays(frameBuffer, frame);
-    if (frameBuffer.length > 1000) {
-        const frameData = frameBuffer.slice();
-        const data: ArrayBuffer = frameData.buffer as ArrayBuffer;
-        decodeBuffer(data);
+    frameQueue.push({seq: seq, data: frame});
+    frameQueue.sort((a, b) => a.seq - b.seq);
+    if (frameQueue.length >= 5) {
+        let data: Uint8Array = new Uint8Array(0)
+        // this somtimes ends up out of order still...
+        while(frameQueue.length > 0) {
+            const item: {seq: number, data: Uint8Array} = frameQueue.shift();
+            console.log("popped ", item.seq);
+            const frame: Uint8Array = item.data;
+            data = concatArrays(data, frame);
+        }
+        await decodeBuffer(data.buffer as ArrayBuffer); 
     }
 }
 
@@ -116,7 +128,12 @@ async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
 async function decodeBuffer(data: ArrayBuffer): Promise<void> {
     if (!context) context = createAudioContext();
     const audio: AudioBuffer = await context.decodeAudioData(data);
-    playbackBuffer = audio;
+    if (playbackBuffer) {
+        playbackBuffer = concatAudioBuffers(playbackBuffer, audio);
+    } else {
+        playbackBuffer = audio;
+    }
+    console.debug(playbackBuffer);
 };
 
 

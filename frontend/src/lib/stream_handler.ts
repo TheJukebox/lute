@@ -1,7 +1,31 @@
 import '$lib/gen/stream_grpc_web_pb';
-import { currentTime } from '../audio_store'
+import { currentTime } from '../audio_store';
+import stream from '$lib/gen/stream_grpc_web_pb';
 
 import type { ClientReadableStream } from 'grpc-web';
+
+
+type Frame = {
+    frame: Uint8Array;
+    seq: number;
+};
+
+let streamWorker: Worker;
+if (typeof window !== 'undefined') {
+    let nextSeq = 1;
+    let framesBuffer: Array<{frames: ArrayBuffer, seq: number}> = [];
+    streamWorker = new Worker(new URL('$lib/stream_worker.ts', import.meta.url), {type: 'module'});
+
+    streamWorker.onmessage = async (event: MessageEvent<{frames: Uint8Array, seq: number}>) => {
+        let frames: ArrayBuffer = event.data.frames.buffer as ArrayBuffer;
+        let seq: number = event.data.seq;
+        framesBuffer.push({frames: frames, seq: seq});
+        framesBuffer.sort((a, b) => a.seq - b.seq);
+        let x = framesBuffer.shift();
+        decodeBuffer(x?.frames, x?.seq);
+    }
+}
+
 
 // Global audio context
 let context: AudioContext | null = null;
@@ -14,14 +38,11 @@ let streamIntervalId: number = 0;
 let timeIntervalId: number = 0;
 
 // Audio data
-let playbackBuffer: AudioBuffer | null = null;
-let frameQueue: Array<{seq: number, data: Uint8Array}> = new Array(0);
+let playbackBuffer: AudioBuffer;
 
 // Chunks
 let chunkBuffer: Uint8Array = new Uint8Array(0);
 let workingFrame: Uint8Array = new Uint8Array(0);
-let nextSeq: number = 1;
-
 
 function createAudioContext(): AudioContext {
     console.debug("Creating new AudioContext...");
@@ -29,6 +50,7 @@ function createAudioContext(): AudioContext {
         "sampleRate": 44100,
         "latencyHint": "playback",
     });
+    playbackBuffer = context.createBuffer(2, 1, 44100);
     return context;
 }
 
@@ -39,40 +61,33 @@ export async function updateCurrentTime(): Promise<void> {
 
 async function playBuffer(offset: number = 0): Promise<void> {
     if (!context) context = createAudioContext();
-    if (!playbackBuffer) {
-        return;
-    }
 
     clearInterval(streamIntervalId);
 
     const source: AudioBufferSourceNode = context.createBufferSource();
     const gainNode = context.createGain();
     const filter = context.createBiquadFilter();
-    filter.type = "lowpass";
+
+    filter.type = 'lowpass';
     source.buffer = playbackBuffer;
-    filter.connect(gainNode);
-    gainNode.connect(context.destination);
     source.connect(gainNode);
-    source.connect(filter);
+    gainNode.connect(filter);
+    filter.connect(context.destination);
+
     currentNode = source;
     currentGain = gainNode;
 
-    filter.frequency.setValueAtTime(1000, context.currentTime);
-    filter.frequency.setValueAtTime(1000, source.buffer.duration);
+    filter.frequency.setValueAtTime(5000, 0);
+    filter.frequency.setValueAtTime(10000, 0.1);
 
-    // fade in/out between buffers
-    // needs tweaking.
-    let fadeTime = 0.0015;
-    gainNode.gain.setValueAtTime(0, context.currentTime);
-    gainNode.gain.setTargetAtTime(1, context.currentTime + fadeTime, fadeTime);
-    gainNode.gain.setTargetAtTime(0, source.buffer.duration - fadeTime, fadeTime);
+    console.debug(`Playing @ ${offset}: `, source.buffer);
 
     source.start(0, offset);
 
     source.onended = () => {
-        if (playing) playBuffer(source.buffer?.duration);
+        if (playing && source.buffer) playBuffer(source.buffer.duration);
+        currentTime.set(context ? context.currentTime : 0);
         source.disconnect();
-        currentTime.set(context?.currentTime);
         gainNode.disconnect(); 
     };
 }
@@ -83,58 +98,26 @@ export async function togglePlayback(): Promise<void> {
     let time = 0;
     currentTime.subscribe((value: number) => time = value);
     if (playing) {
-        console.debug("Starting playback");
         streamIntervalId = setInterval(playBuffer, 1, time);
         timeIntervalId = setInterval(updateCurrentTime, 1000);
     } else {
-        console.debug("Stopping playback");
         currentGain?.gain.setTargetAtTime(0, time - 1, 1);
         currentNode?.stop(1);
-        clearInterval(timeIntervalId);
     }
-}
-
-
-async function awaitPrevious(seq: number): Promise<void> {
-    return new Promise(resolve => {
-        setInterval(() => {
-            if (seq === nextSeq) {
-                nextSeq = seq + 1;
-                resolve();
-            }
-        }, 10);
-    })
 }
 
 
 async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
-    await awaitPrevious(seq);
-    frameQueue.push({seq: seq, data: frame});
-    frameQueue.sort((a, b) => a.seq - b.seq);
-    if (frameQueue.length >= 5) {
-        let data: Uint8Array = new Uint8Array(0)
-        // this somtimes ends up out of order still...
-        while(frameQueue.length > 0) {
-            const item: {seq: number, data: Uint8Array} = frameQueue.shift();
-            console.log("popped ", item.seq);
-            const frame: Uint8Array = item.data;
-            data = concatArrays(data, frame);
-        }
-        await decodeBuffer(data.buffer as ArrayBuffer); 
-    }
+    let msg: Frame = {frame: frame, seq: seq}; 
+    streamWorker.postMessage(msg);
 }
 
 
-async function decodeBuffer(data: ArrayBuffer): Promise<void> {
+async function decodeBuffer(data: ArrayBuffer, seq: number): Promise<void> {
     if (!context) context = createAudioContext();
     const audio: AudioBuffer = await context.decodeAudioData(data);
-    if (playbackBuffer) {
-        playbackBuffer = concatAudioBuffers(playbackBuffer, audio);
-    } else {
-        playbackBuffer = audio;
-    }
-    console.debug(playbackBuffer);
-};
+    playbackBuffer = concatAudioBuffers(playbackBuffer, audio);
+}
 
 
 export function fetchStream(host: string, path: string, sessionId: string): void {   

@@ -1,20 +1,30 @@
 <script lang='ts'>
 	import { onDestroy } from 'svelte';
-	import { playing, toggleStream } from './audio_store';
+	import { playing, toggleStream, currentTime } from './audio_store';
 
 	import type { Track } from './audio_store'
-	import type { Writable } from 'svelte/store';
+	import { togglePlayback } from '$lib/stream_handler';
 
 	let mouseDown: boolean = false;	
+
+	let time = "0:00";
+	let maxTime = "0:00";
+	let fillPercentage = 0;
+	const unsubTime = currentTime.subscribe((value) => {
+		time = formatSeconds(value);
+		fillPercentage = (value / 415) * 100;
+	});
 
 	let track: Track;
 	let paused: boolean = true;
 	const unsubscribe = playing.subscribe(value => {
 		track = value;
+		maxTime = formatSeconds(track.duration);
 	});
 
 	onDestroy(() => {
 		unsubscribe();
+		unsubTime();
 	});
 
 	/**
@@ -22,9 +32,26 @@
 	 * @function
 	 */
 	function toggle(): void {
+		console.log("TOGGLIN");
 		track.paused = !track.paused;
 		paused = !paused;
-		toggleStream();
+		togglePlayback();
+	}
+
+	/**
+	 * Takes a time in seconds and converts it to a string in the format MM:SS
+	 * @function format
+	 * @param time {number}	A length of time in milliseconds.
+	 * @returns {string}	Formated time or '...'.
+	 */
+	function formatMilliseconds(time: number): string {
+		if (isNaN(time)) return '...';
+		time = Math.floor(time / 1000);	
+
+		const minutes: number = Math.floor(time / 60);
+		const seconds: number = Math.floor(time % 60);
+
+		return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 	}
 
 	/**
@@ -33,7 +60,7 @@
 	 * @param time {number}	A length of time in seconds.
 	 * @returns {string}	Formated time or '...'.
 	 */
-	function format(time: number): string {
+	function formatSeconds(time: number): string {
 		if (isNaN(time)) return '...';
 
 		const minutes: number = Math.floor(time / 60);
@@ -65,6 +92,7 @@
 		seekFill.ariaValueNow = `${percentage}`;
 	}
 	
+
 	/**
 	 * Convenience function for discarding mouse events.
 	 * @function
@@ -103,7 +131,7 @@
 		</div>
 
 		<div class='time'>
-			0:00/0:00
+			{time}/{maxTime}
 		</div>
 
 		<div class='seekbar' id="seekbar"
@@ -116,7 +144,7 @@
 			aria-valuemax=100
 			tabindex=0
 		>
-			<span class='seekbar' id="seekFill" style="width: 0%">
+			<span class='seekbar' id="seekFill" style="width: {fillPercentage}%">
 				<div class='playhead' id="playhead"></div>
 			</span>
 		</div>

@@ -17,13 +17,12 @@
         album: string;
         num: number;
         path: string;
+        duration: number;
     }
 
     // some fake song data
     let songs: SongData[] = [
-        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/converted/LoveMeTender.aac" },
-        { id: 2, title: 'song2', artist: 'artist2', album: 'album', num: 1, path: "" },
-        { id: 3, title: 'song3', artist: 'artist3', album: 'album', num: 1, path: ""},
+        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/converted/SomethingInTheWay.aac", duration: 415 },
     ];
 </script>
   
@@ -48,9 +47,9 @@
         </thead>
         <tbody>
             {#each songs as song}
-                <tr class='table_entry' onclick={() => startStream(song.path, song.title, song.artist, song.album)}> 
+                <tr class='table_entry' onclick={() => startStream(song.path, song.title, song.artist, song.album, song.duration)}> 
                     <td>{song.title}</td>
-                    <td>00:00</td>
+                    <td>6:55</td>
                     <td>{song.artist}</td>
                     <td>{song.album}</td>
                     <td></td>
@@ -58,7 +57,6 @@
             {/each}
         </tbody>
     </table>
-    <button onclick={() => setInterval(updateCurrentTime, 1000)}>{time}</button>
 </div>
 
 <style>

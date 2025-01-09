@@ -1,12 +1,16 @@
 <script lang='ts'>
 	import { onDestroy } from 'svelte';
 	import { currentTrack, currentTime, seekToTime, isPlaying } from '$lib/audio_store';
+	import { setVolume } from '$lib/stream_handler';
 
 	import type { Track } from '$lib/audio_store'
 	import type { Unsubscriber } from 'svelte/store';
 	import { togglePlayback } from '$lib/stream_handler';
 
 	let mouseDown: boolean = false;	
+	let currentVolume: number = 1;
+	let cachedVolume: number = 1;
+	let muted: boolean = false;
 
 	let track: Track = {
 		path: '',
@@ -39,6 +43,7 @@
 
 
 	onDestroy(() => {
+		unsubPlay();
 		unsubTrack();
 		unsubTime();
 	});
@@ -103,6 +108,25 @@
 		}
 	}
 
+	function toggleVolume(): void {
+		muted = !muted;
+		if (muted) {
+			cachedVolume = currentVolume;
+			console.log(cachedVolume);
+			currentVolume = 0;
+			setVolume(0);
+		} else {
+			currentVolume = cachedVolume;
+			setVolume(cachedVolume);
+		}
+	}
+
+	function updateVolume(event: Event): void {
+		const target = event.target as HTMLInputElement;
+		currentVolume = parseFloat(target.value);
+		setVolume(target.value);
+	}
+
 </script>
 <svelte:window 
 	onmouseup={() => mouseDown = false} 
@@ -148,7 +172,7 @@
 			</span>
 		</div>
 
-		<div class='controls'>
+		<div class='streamControl'>
 			<button 
 				class='previous'
 				aria-label='previous'
@@ -164,7 +188,10 @@
 				aria-label='next'
 			></button>
 		</div>
-
+		<div class="volume-control">
+			<button class='mute' aria-label='mute' onclick={toggleVolume}></button>
+			<input id="volume" class="volume-slider" type="range" min="0" max="1" step="0.01" value={currentVolume} oninput={updateVolume}/>
+		</div>
 	</div>
 </div>
 
@@ -230,7 +257,7 @@
 		box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.3);
 	}
 
-	.controls {
+	.streamControl {
 		position: absolute;
 		display: flex;
 		width: 200px;
@@ -245,9 +272,20 @@
 		box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.3);
 	}
 
-	.controls button:hover {
+	.streamControl button:hover {
 		filter: invert(75%);
 		cursor: pointer;
+	}
+
+	.mute {
+		width: 5%;
+		aspect-ratio: 1;
+		background: none;
+		background-repeat: no-repeat;
+		background-position: 50% 50%;
+		border-radius: 50%;
+		border-width: 0px;
+		background-image: url(./assets/volume.svg);
 	}
 
 	.pause {
@@ -256,7 +294,6 @@
 		background: none;
 		background-repeat: no-repeat;
 		background-position: 50% 50%;
-		border-radius: 50%;
 		border-color: var(--goldenrod);
 		border-width: 0px;
 	}
@@ -381,5 +418,83 @@
 		margin: 60px 0px 50px 89%;
 		color: var(--indigo-dye);
 		user-select: none; 
+	}
+
+	.volume-control {
+		display: flex;
+		align-items: center;
+		margin-top: 10px;
+	}
+
+	.volume-slider {
+		appearance: none;
+		width: 15%;
+		height: 10px;
+		background-color: var(--viridian-dark);
+		border-radius: 5px;
+		cursor: pointer;
+		outline: none;
+	}
+
+	.volume-slider::-webkit-slider-thumb {
+		appearance: none;
+		width: 14px;
+		height: 18px;
+		border-radius: 5px;
+		background: var(--goldenrod);
+		box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+		border-width: 0;
+		cursor: pointer;
+	}
+
+	.volume-slider::-moz-range-thumb {
+		width: 14px;
+		height: 18px;
+		border-radius: 5px;
+		background: var(--goldenrod);
+		box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+		border-width: 0;
+		cursor: pointer;
+	}
+
+	.volume-slider::-ms-thumb {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--goldenrod);
+		cursor: pointer;
+	}
+
+	.volume-slider::-webkit-slider-runnable-track {
+		background-color: var(--bright-pink-crayola);
+		height: 100%;
+		border-radius: 5px;
+		box-shadow: 0 0 5px rgba(255, 0, 191, 1);
+	}
+
+	.volume-slider::-moz-range-progress {
+		background-color: var(--bright-pink-crayola);
+		height: 100%;
+		border-radius: 5px;
+		box-shadow: 0 0 5px rgba(255, 0, 191, 1);
+	}
+
+	.volume-slider::-moz-range-track {
+		background-color: var(--viridian-dark);
+		height: 100%;
+		border-radius: 5px;
+	}
+
+	.volume-slider::-ms-fill-lower {
+		background-color: var(--bright-pink-crayola);
+		height: 100%;
+		border-radius: 5px;
+		box-shadow: 0 0 5px rgba(255, 0, 191, 1);
+	}
+
+	.volume-slider::-ms-fill-upper {
+		background-color: var(--viridian-dark);
+		height: 100%;
+		border-radius: 5px;
 	}
 </style>

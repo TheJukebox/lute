@@ -18,7 +18,23 @@
     // some fake song data
     let songs: SongData[] = [
         { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/converted/SomethingInTheWay.aac", duration: 235 },
+        { id: 2, title: 'Breezeblocks', artist: 'alt-j', album: 'alt-j', num: 1, path: "uploads/converted/Breezeblocks.aac", duration: 226 },
     ];
+
+	/**
+	 * Takes a time in seconds and converts it to a string in the format MM:SS
+	 * @function format
+	 * @param time {number}	A length of time in seconds.
+	 * @returns {string}	Formated time or '...'.
+	 */
+	function formatSeconds(time: number): string {
+		if (isNaN(time)) return '...';
+
+		const minutes: number = Math.floor(time / 60);
+		const seconds: number = Math.floor(time % 60);
+
+		return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
+	}
 </script>
   
 
@@ -44,7 +60,7 @@
             {#each songs as song}
                 <tr class='table_entry' onclick={() => startStream(song.path, song.title, song.artist, song.album, song.duration)}> 
                     <td>{song.title}</td>
-                    <td>6:55</td>
+                    <td>{formatSeconds(song.duration)}</td>
                     <td>{song.artist}</td>
                     <td>{song.album}</td>
                     <td></td>

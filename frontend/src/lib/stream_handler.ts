@@ -27,6 +27,7 @@ let playing = false;
 let seeking = false;
 let timeElapsed: number = 0;
 let startTime: number = 0;
+let volume: number = 1;
 
 // Audio data
 let playbackBuffer: AudioBuffer | null = null;
@@ -65,6 +66,13 @@ if (typeof window !== 'undefined') {
 
 /* Audio buffer handling below */
 /* ==================== */
+
+/**
+ * Toggles playback of audio stored in playbackBuffer.
+ * @function
+ * @async
+ * @returns Promise<void>
+ */
 export async function togglePlayback(): Promise<void> {
     isPlaying.subscribe((value: boolean) => playing = value);
     currentTime.subscribe((value: number) => timeElapsed = value);
@@ -84,11 +92,23 @@ export async function togglePlayback(): Promise<void> {
     }
 }
 
-export async function updateCurrentTime(): Promise<void> {
+
+/**
+ * 
+ * @returns 
+ */
+export function updateCurrentTime(): void {
     if (!context || !playing) return;
     // set the current time here every 1 second.
     currentTime.set(context.currentTime - startTime);
-    console.debug(timeElapsed);
+}
+
+
+export function setVolume(v: number): void {
+    volume = v;
+    if (currentGain) {
+        currentGain.gain.setValueAtTime(v, 0);
+    }
 }
 
 export async function seek(time: number): Promise<void> {
@@ -105,14 +125,15 @@ export async function seek(time: number): Promise<void> {
     }
 
     timeElapsed = time;
+    currentTime.set(time);
     seeking = false;
     isSeeking.set(seeking);
     if (playing) playBuffer(timeElapsed);
 }
 
+
 export async function bufferAudio(): Promise<void> {
     if (!context) context = createAudioContext();
-    console.debug('Buffering...');
 
     // Use the stream worker to fetch more frames
     let msg: FrameMessage = {type: 'dequeue', frame: undefined};
@@ -150,29 +171,34 @@ async function playBuffer(offset: number = 0): Promise<void> {
     // filter
     const filterNode = context.createBiquadFilter();
     filterNode.type = 'lowpass';
-    filterNode.frequency.setValueAtTime(10000, 0);
     filterNode.connect(context.destination);
 
     // gain
     const gainNode = context.createGain();
     gainNode.connect(filterNode);
+    gainNode.gain.setValueAtTime(volume, 0);
+    currentGain = gainNode;
 
     // buffer
     const sourceNode = context.createBufferSource();
     sourceNode.buffer = playbackBuffer;
     sourceNode.connect(gainNode);
     currentNode = sourceNode;
-    
+
+    filterNode.frequency.setValueAtTime(10000, 0);
+
     // start playback
     startTime = context.currentTime - offset;
     timeInterval = setInterval(updateCurrentTime, 500);
+    console.log("new buff", sourceNode.buffer);
     sourceNode.start(0, offset);
     // preload some more audio
-    bufferAudio();
+    console.debug(playbackBuffer?.duration);
+    if (playbackBuffer.duration < 215.0) bufferAudio();
 
     sourceNode.onended = () => {
         if (seeking) return;
-        if (playing) playBuffer(timeElapsed);
+        if (playing) playBuffer(sourceNode.buffer?.duration);
         else {
             clearInterval(timeInterval);
             sourceNode.stop();

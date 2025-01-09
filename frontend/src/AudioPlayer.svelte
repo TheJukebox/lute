@@ -8,16 +8,24 @@
 
 	let mouseDown: boolean = false;	
 
+	let track: Track = {
+		path: '',
+		title: '',
+		artist: '',
+		album: '',
+		paused: true,
+		duration: 0,
+	};
+
 	let time = "0:00";
 	let maxTime = "0:00";
 	let fillPercentage = 0;
+
 	const unsubTime = currentTime.subscribe((value) => {
 		time = formatSeconds(value);
-		fillPercentage = (value / 415) * 100;
+		fillPercentage = (value / track.duration) * 100;
 	});
 
-
-	let track: Track;
 	const unsubTrack: Unsubscriber = currentTrack.subscribe((value) => {
 		track = value;
 		maxTime = formatSeconds(track.duration);
@@ -28,6 +36,7 @@
 		playing = value;
 		togglePlayback();
 	});
+
 
 	onDestroy(() => {
 		unsubTrack();
@@ -79,6 +88,7 @@
 		let seekFill: HTMLElement = seekbar.querySelector(".seekbar span") as HTMLElement;
 		seekFill.style.width = `${percentage}%`;
 		seekFill.ariaValueNow = `${percentage}`;
+		seekToTime((percentage / 100) * track.duration);
 	}
 	
 
@@ -87,7 +97,7 @@
 	 * @function
 	 * @param event
 	 */
-	function seek(event: MouseEvent): void {
+	function filterEvents(event: MouseEvent): void {
 		if (mouseDown) {
 			updateFill(event);
 		}
@@ -96,7 +106,7 @@
 </script>
 <svelte:window 
 	onmouseup={() => mouseDown = false} 
-	onmousemove={(event => seek(event))}
+	onmousemove={(event => filterEvents(event))}
 ></svelte:window>
 
 <div class='banner'>
@@ -126,7 +136,7 @@
 		<div class='seekbar' id="seekbar"
 			onmousedown={() => mouseDown = true }
 			onmouseup={() => mouseDown = false }
-			onmousemove={(event) => seek(event)}
+			onmousemove={(event) => filterEvents(event)}
 			role="slider"
 			aria-valuenow=0
 			aria-valuemin=0

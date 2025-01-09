@@ -165,7 +165,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
     
     // start playback
     startTime = context.currentTime - offset;
-    timeInterval = setInterval(updateCurrentTime, 1000);
+    timeInterval = setInterval(updateCurrentTime, 500);
     sourceNode.start(0, offset);
     // preload some more audio
     bufferAudio();

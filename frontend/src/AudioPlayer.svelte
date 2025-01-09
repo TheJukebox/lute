@@ -1,8 +1,9 @@
 <script lang='ts'>
 	import { onDestroy } from 'svelte';
-	import { playing, toggleStream, currentTime } from './audio_store';
+	import { currentTrack, currentTime, seekToTime, isPlaying } from './audio_store';
 
 	import type { Track } from './audio_store'
+	import type { Unsubscriber } from 'svelte/store';
 	import { togglePlayback } from '$lib/stream_handler';
 
 	let mouseDown: boolean = false;	
@@ -15,15 +16,21 @@
 		fillPercentage = (value / 415) * 100;
 	});
 
+
 	let track: Track;
-	let paused: boolean = true;
-	const unsubscribe = playing.subscribe(value => {
+	const unsubTrack: Unsubscriber = currentTrack.subscribe((value) => {
 		track = value;
 		maxTime = formatSeconds(track.duration);
 	});
 
+	let playing: boolean = false;
+	const unsubPlay: Unsubscriber = isPlaying.subscribe((value) => {
+		playing = value;
+		togglePlayback();
+	});
+
 	onDestroy(() => {
-		unsubscribe();
+		unsubTrack();
 		unsubTime();
 	});
 
@@ -32,25 +39,8 @@
 	 * @function
 	 */
 	function toggle(): void {
-		track.paused = !track.paused;
-		paused = !paused;
-		togglePlayback();
-	}
-
-	/**
-	 * Takes a time in seconds and converts it to a string in the format MM:SS
-	 * @function format
-	 * @param time {number}	A length of time in milliseconds.
-	 * @returns {string}	Formated time or '...'.
-	 */
-	function formatMilliseconds(time: number): string {
-		if (isNaN(time)) return '...';
-		time = Math.floor(time / 1000);	
-
-		const minutes: number = Math.floor(time / 60);
-		const seconds: number = Math.floor(time % 60);
-
-		return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
+		playing = !playing;
+		isPlaying.set(playing);
 	}
 
 	/**
@@ -115,7 +105,7 @@
 		<span><h1>LUTE</h1></span>
 	</a>
 
-	<div class='player' class:paused>
+	<div class='player' class:playing>
 		<audio>
 		</audio>
 
@@ -152,12 +142,12 @@
 			<button 
 				class='previous'
 				aria-label='previous'
-				
+				onclick={() => seekToTime()}	
 			></button>
 			<button 
 				class='pause'
 				onclick={toggle}
-				aria-label={track.paused ? 'play' : 'pause'}
+				aria-label={playing ? 'pause' : 'play'}
 			></button>
 			<button 
 				class='next'

@@ -1,35 +1,39 @@
-let frameQueue: Array<{frame: Uint8Array, seq: number}> = [];
-
 type Frame = {
     frame: Uint8Array;
     seq: number;
 }
 
-let nextSeq: number = 1;
-
-self.onmessage = async (event: MessageEvent<Frame>) => {
-    await awaitPrevious(event.data.seq);
-    frameQueue.push(event.data);
-    if (frameQueue.length > 2) {
-        let frames: Uint8Array = new Uint8Array(0);
-        let next = frameQueue.shift();
-        if (next) frames = concatArrays(frames, next.frame);
-        let seq = next?.seq;
-        while (frameQueue.length > 0) {
-            let next: Uint8Array | undefined = frameQueue.shift()?.frame;
-            if (next) frames = concatArrays(frames, next);
-        }
-        self.postMessage({frames: frames, seq: seq});
-    }
-};
-
-
-async function awaitPrevious(seq: number): Promise<void> {
-    while (seq !== nextSeq) {
-        return new Promise(resolve => setTimeout(resolve, 10));
-    }
-    nextSeq = seq + 1;
+type FrameMessage = {
+    type: string | undefined;
+    frame: Frame | undefined;
 }
+
+
+let frameQueue: Array<Frame> = [];
+
+self.onmessage = async (event: MessageEvent<FrameMessage>) => {
+    const { type, frame } = event.data;
+    let msg: FrameMessage = {type: undefined, frame: undefined};
+    switch (type) {
+        case 'queue':
+            if (frame) {
+                frameQueue.push(frame);
+                frameQueue.sort((a, b) => a.seq - b.seq);
+                msg.type = 'queue_ok';
+            }
+            break;
+        case 'dequeue':
+            let next: Frame | undefined = frameQueue.shift();
+            if (next) {
+                msg.frame = next;
+                msg.type = 'dequeue_ok';
+            } else {
+                msg.type = 'dequeue_fail';
+            }
+            break;
+    }
+    postMessage(msg);
+};
 
 
 /**

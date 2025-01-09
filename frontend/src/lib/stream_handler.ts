@@ -21,8 +21,12 @@ if (typeof window !== 'undefined') {
         let seq: number = event.data.seq;
         framesBuffer.push({frames: frames, seq: seq});
         framesBuffer.sort((a, b) => a.seq - b.seq);
-        let x = framesBuffer.shift();
-        decodeBuffer(x?.frames, x?.seq);
+        console.log(seq, nextSeq);
+        if (framesBuffer.at(0).seq === nextSeq) {
+            let x = framesBuffer.shift();
+            decodeBuffer(x?.frames, x?.seq);
+            nextSeq += 3;
+        }
     }
 }
 
@@ -38,7 +42,7 @@ let streamIntervalId: number = 0;
 let timeIntervalId: number = 0;
 
 // Audio data
-let playbackBuffer: AudioBuffer;
+let playbackBuffer: AudioBuffer | null = null;
 
 // Chunks
 let chunkBuffer: Uint8Array = new Uint8Array(0);
@@ -50,7 +54,6 @@ function createAudioContext(): AudioContext {
         "sampleRate": 44100,
         "latencyHint": "playback",
     });
-    playbackBuffer = context.createBuffer(2, 1, 44100);
     return context;
 }
 
@@ -61,6 +64,7 @@ export async function updateCurrentTime(): Promise<void> {
 
 async function playBuffer(offset: number = 0): Promise<void> {
     if (!context) context = createAudioContext();
+    if (!playbackBuffer) return;
 
     clearInterval(streamIntervalId);
 
@@ -116,7 +120,11 @@ async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
 async function decodeBuffer(data: ArrayBuffer, seq: number): Promise<void> {
     if (!context) context = createAudioContext();
     const audio: AudioBuffer = await context.decodeAudioData(data);
-    playbackBuffer = concatAudioBuffers(playbackBuffer, audio);
+    if (playbackBuffer) {
+        playbackBuffer = concatAudioBuffers(playbackBuffer, audio);
+    } else {
+        playbackBuffer = audio;
+    }
 }
 
 

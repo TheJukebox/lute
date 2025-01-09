@@ -1,14 +1,9 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
     import { startStream, currentTime } from '../../audio_store';
-    import { updateCurrentTime } from '$lib/stream_handler';
-    
-    import type { Track } from '../../audio_store';
 
     let time = 0;
     currentTime.subscribe((value: number) => time = value);
-
-    
 
     type SongData = {
         id: number;
@@ -22,7 +17,7 @@
 
     // some fake song data
     let songs: SongData[] = [
-        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/converted/SomethingInTheWay.aac", duration: 415 },
+        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/converted/SomethingInTheWay.aac", duration: 235 },
     ];
 </script>
   

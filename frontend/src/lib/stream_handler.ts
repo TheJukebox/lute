@@ -1,5 +1,5 @@
 import '$lib/gen/stream_grpc_web_pb';
-import { currentTime } from '../audio_store';
+import { currentTime, isPlaying } from '../audio_store';
 
 import type { ClientReadableStream } from 'grpc-web';
 
@@ -20,10 +20,12 @@ type FrameMessage = {
 let context: AudioContext | null = null;
 
 // Stream control
-let playing: boolean = false;
 let currentNode: AudioBufferSourceNode | null = null;
 let currentGain: GainNode | null = null;
 let timeInterval: number = 0;
+let playing = false;
+let timeElapsed: number = 0;
+let startTime: number = 0;
 
 // Audio data
 let playbackBuffer: AudioBuffer | null = null;
@@ -63,19 +65,36 @@ if (typeof window !== 'undefined') {
 /* Audio buffer handling below */
 /* ==================== */
 export async function togglePlayback(): Promise<void> {
-    playing = !playing;
-    let time = 0;
-    currentTime.subscribe((value: number) => time = value);
+    isPlaying.subscribe((value: boolean) => playing = value);
+    currentTime.subscribe((value: number) => timeElapsed = value);
     if (playing) {
-        playBuffer(time);
+        if (Number.isNaN(timeElapsed)) {
+            playBuffer(0);
+        } else {
+            playBuffer(timeElapsed);
+        }
+        startTime = context?.currentTime;
         timeInterval = setInterval(updateCurrentTime, 1000);
     } else {
         clearInterval(timeInterval);
-        currentTime.set(context?.currentTime);
+        currentTime.set(timeElapsed);
         currentNode?.stop(0);
     }
 }
 
+export async function updateCurrentTime(): Promise<void> {
+    if (!context) return;
+    currentTime.set(context.currentTime - startTime);
+    console.log(timeElapsed);
+}
+
+export async function seek(time: number): Promise<void> {
+    isPlaying.set(false);
+    playing = false;
+    currentNode?.stop();
+    currentNode?.disconnect();
+    currentTime.set(0);
+}
 
 export async function bufferAudio(): Promise<void> {
     if (!context) context = createAudioContext();
@@ -122,12 +141,11 @@ async function playBuffer(offset: number = 0): Promise<void> {
     sourceNode.connect(gainNode);
     currentNode = sourceNode;
     
-    console.debug("playing: ", sourceNode.buffer);
     sourceNode.start(0, offset);
     bufferAudio();
 
     sourceNode.onended = () => {
-        if (playing) playBuffer(sourceNode.buffer?.duration);
+        if (playing) playBuffer(timeElapsed);
         else {
             sourceNode.stop();
             sourceNode.disconnect();
@@ -299,10 +317,6 @@ function concatArrays(x: Uint8Array, y: Uint8Array): Uint8Array {
 }
 
 
-export async function updateCurrentTime(): Promise<void> {
-    if (!context) return;
-    currentTime.set(context.currentTime);
-}
 
 
 function createAudioContext(): AudioContext {
@@ -310,6 +324,7 @@ function createAudioContext(): AudioContext {
     context = new AudioContext({
         "sampleRate": 44100,
         "latencyHint": "playback",
-    });
+    }); 
+    startTime = context.currentTime;
     return context;
 }

@@ -1,6 +1,6 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
-    import { startStream, currentTime } from '../../audio_store';
+    import { startStream, currentTime } from '$lib/audio_store';
 
     let time = 0;
     currentTime.subscribe((value: number) => time = value);

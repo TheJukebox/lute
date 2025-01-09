@@ -1,5 +1,5 @@
 import '$lib/gen/stream_grpc_web_pb';
-import { currentTime, isPlaying } from '../audio_store';
+import { currentTime, isPlaying, isSeeking } from '$lib/audio_store';
 
 import type { ClientReadableStream } from 'grpc-web';
 
@@ -24,6 +24,7 @@ let currentNode: AudioBufferSourceNode | null = null;
 let currentGain: GainNode | null = null;
 let timeInterval: number = 0;
 let playing = false;
+let seeking = false;
 let timeElapsed: number = 0;
 let startTime: number = 0;
 
@@ -68,32 +69,45 @@ export async function togglePlayback(): Promise<void> {
     isPlaying.subscribe((value: boolean) => playing = value);
     currentTime.subscribe((value: number) => timeElapsed = value);
     if (playing) {
-        if (Number.isNaN(timeElapsed)) {
-            playBuffer(0);
-        } else {
-            playBuffer(timeElapsed);
-        }
-        startTime = context?.currentTime;
-        timeInterval = setInterval(updateCurrentTime, 1000);
+        playBuffer(timeElapsed);
     } else {
+        if (context) {
+            currentTime.set(context.currentTime - startTime);
+        }
+        if (currentNode) {
+            currentNode.onended = null;
+            currentNode.stop(0);
+            currentNode.disconnect();
+        }
         clearInterval(timeInterval);
-        currentTime.set(timeElapsed);
         currentNode?.stop(0);
     }
 }
 
 export async function updateCurrentTime(): Promise<void> {
-    if (!context) return;
+    if (!context || !playing) return;
+    // set the current time here every 1 second.
     currentTime.set(context.currentTime - startTime);
-    console.log(timeElapsed);
+    console.debug(timeElapsed);
 }
 
 export async function seek(time: number): Promise<void> {
-    isPlaying.set(false);
-    playing = false;
-    currentNode?.stop();
-    currentNode?.disconnect();
-    currentTime.set(0);
+    if (!context || !playbackBuffer) return;
+    console.debug(`Seeking to ${time}`);
+    seeking = true;
+    isSeeking.set(seeking);
+
+    if (currentNode) {
+        currentNode.onended = null;
+        currentNode.stop(0);
+        currentNode.disconnect();
+        clearInterval(timeInterval);
+    }
+
+    timeElapsed = time;
+    seeking = false;
+    isSeeking.set(seeking);
+    if (playing) playBuffer(timeElapsed);
 }
 
 export async function bufferAudio(): Promise<void> {
@@ -124,6 +138,14 @@ async function playBuffer(offset: number = 0): Promise<void> {
     if (!playbackBuffer) {
         await bufferAudio();
     }
+
+    // cleanup
+    if (currentNode) {
+        currentNode.onended = null;
+        currentNode.stop(0);
+        currentNode.disconnect();
+    }
+
     // source -> gain -> filter
     // filter
     const filterNode = context.createBiquadFilter();
@@ -141,12 +163,18 @@ async function playBuffer(offset: number = 0): Promise<void> {
     sourceNode.connect(gainNode);
     currentNode = sourceNode;
     
+    // start playback
+    startTime = context.currentTime - offset;
+    timeInterval = setInterval(updateCurrentTime, 1000);
     sourceNode.start(0, offset);
+    // preload some more audio
     bufferAudio();
 
     sourceNode.onended = () => {
+        if (seeking) return;
         if (playing) playBuffer(timeElapsed);
         else {
+            clearInterval(timeInterval);
             sourceNode.stop();
             sourceNode.disconnect();
             gainNode.disconnect();

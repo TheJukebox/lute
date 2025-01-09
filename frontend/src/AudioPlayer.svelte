@@ -1,8 +1,8 @@
 <script lang='ts'>
 	import { onDestroy } from 'svelte';
-	import { currentTrack, currentTime, seekToTime, isPlaying } from './audio_store';
+	import { currentTrack, currentTime, seekToTime, isPlaying } from '$lib/audio_store';
 
-	import type { Track } from './audio_store'
+	import type { Track } from '$lib/audio_store'
 	import type { Unsubscriber } from 'svelte/store';
 	import { togglePlayback } from '$lib/stream_handler';
 

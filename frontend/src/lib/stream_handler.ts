@@ -10,10 +10,12 @@ type Frame = {
     seq: number;
 };
 
+
 type FrameMessage = {
     type: string;
     frame: Frame | undefined;
 }
+
 
 /* Globals */
 /* ==================== */
@@ -46,6 +48,7 @@ let streamWorker: Worker;
 if (typeof window !== 'undefined') {
     streamWorker = new Worker(new URL('$lib/stream_worker.ts', import.meta.url), {type: 'module'});
 
+    // Switch on message types
     streamWorker.onmessage = async (event: MessageEvent<FrameMessage>) => {
         const { type, frame } = event.data;
         switch(type) {
@@ -101,8 +104,8 @@ export async function togglePlayback(): Promise<void> {
 
 
 /**
- * 
- * @returns 
+ * Updates the elapsed time of playback. 
+ * @returns void
  */
 export function updateCurrentTime(): void {
     if (!context || !playing) return;
@@ -110,7 +113,10 @@ export function updateCurrentTime(): void {
     currentTime.set(context.currentTime - startTime);
 }
 
-
+/**
+ * Sets the volume of the playback via gain nodes.
+ * @param v The new volume.
+ */
 export function setVolume(v: number): void {
     volume = v;
     if (currentGain) {
@@ -118,27 +124,45 @@ export function setVolume(v: number): void {
     }
 }
 
+/**
+ * Seeks to a certain time in the playback buffer.
+ * @param time The time to seek to.
+ * @async
+ */
 export async function seek(time: number): Promise<void> {
     if (!context || !playbackBuffer) return;
+
     console.debug(`Seeking to ${time}`);
+    // Flag for avoiding playback when currentNode is stopped.
     seeking = true;
     isSeeking.set(seeking);
 
+    // Kill the source node.
     if (currentNode) {
         currentNode.onended = null;
         currentNode.stop(0);
         currentNode.disconnect();
-        clearInterval(timeInterval);
     }
 
+    // Pause time updates 
+    clearInterval(timeInterval);
     timeElapsed = time;
     currentTime.set(time);
+
+    // reset the flag
     seeking = false;
     isSeeking.set(seeking);
+
+    // begin playback again if required
     if (playing) playBuffer(timeElapsed);
 }
 
 
+/**
+ * Decodes queued frames and updates the playback buffer with the resulting audio.
+ * @function
+ * @async
+ */
 export async function bufferAudio(): Promise<void> {
     if (!context) context = createAudioContext();
 
@@ -160,7 +184,12 @@ export async function bufferAudio(): Promise<void> {
     playbackBuffer = playbackBuffer ? concatAudioBuffers(playbackBuffer, audio) : audio;
 }
 
-
+/**
+ * Recursively plays back the buffered audio.
+ * @function
+ * @async 
+ * @param offset Offsets the time to begin playback in the buffer.
+ */
 async function playBuffer(offset: number = 0): Promise<void> {
     if (!context) context = createAudioContext();
     if (!playbackBuffer) {
@@ -217,11 +246,23 @@ async function playBuffer(offset: number = 0): Promise<void> {
 
 /* Frame handling below */
 /* ==================== */
+
+/**
+ * Enqueues frames via the stream worker.
+ * @function
+ * @async
+ * @param frame The frame to buffer.
+ * @param seq The sequence ID for this frame.
+ */
 async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
     let msg: FrameMessage = {type: 'queue', frame: {frame, seq}}; 
     streamWorker.postMessage(msg);
 }
 
+/**
+ * Convenience function for resetting stream state.
+ * @function
+ */
 export function resetStream(): void {
     playing = false;
     isPlaying.set(false);
@@ -254,8 +295,18 @@ export function resetStream(): void {
     isPlaying.set(true);
 }
 
+/**
+ * Fetches a new stream.
+ * @function
+ * @param host The host/port to receive the stream from.
+ * @param path The path for the file to stream on the server.
+ * @param sessionId A session ID to associate with the stream.
+ */
 export function fetchStream(host: string, path: string, sessionId: string): void {   
+    // reset stream state
     resetStream();
+
+    // Open a connection to the server.
     const service: proto.stream.AudioStreamClient = new proto.stream.AudioStreamClient(
         host,
         null,
@@ -266,10 +317,12 @@ export function fetchStream(host: string, path: string, sessionId: string): void
     request.setFileName(path);
     request.setSessionId(sessionId);
 
+    // request the stream
     console.info(`(${host}) (${sessionId}) Requestion stream for '${path}'...`);
     const audioStream: ClientReadableStream<proto.stream.AudioStreamChunk> = service.streamAudio(request, null);
     let frameCount: number = 0;
 
+    // Handle frame buffering
     audioStream.on('data', (response: proto.stream.AudioStreamChunk) => {
         // @ts-ignore: this won't be a string
         let chunk: Uint8Array = response.getData();
@@ -303,12 +356,19 @@ export function fetchStream(host: string, path: string, sessionId: string): void
         }
     });
 
+    // event for connection closing
     audioStream.on('end', async () => {
         console.info(`(${host}) (${sessionId}) Stream complete.`);
     });
 }
 
-
+/**
+ * Concatenates two AudioBuffers into a single AudioBuffer.
+ * @function  
+ * @param x The audio buffer to append to
+ * @param y The audio buffer to append
+ * @returns AudioBuffer
+ */
 function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null {
     if (!context) {
         console.error("Unable to concatenate AudioBuffers as the AudioContext was not initialised!");
@@ -331,6 +391,7 @@ function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null 
 
 /**
  * Determines if the data in the array contains a valid ADTS header.
+ * @function
  * @param data {Uint8Array} The data to operate on.
  * @returns {number}        The index that the ADTS header begins at. 
  */
@@ -408,13 +469,16 @@ function concatArrays(x: Uint8Array, y: Uint8Array): Uint8Array {
 }
 
 
-
-
+/**
+ * Creates and sets the global audio context for the stream.
+ * @function
+ * @returns AudioContext
+ */
 function createAudioContext(): AudioContext {
     console.debug("Creating new AudioContext...");
-    context = new AudioContext({
+    const newContext = new AudioContext({
         "sampleRate": 44100,
         "latencyHint": "playback",
     }); 
-    return context;
+    return newContext;
 }

@@ -133,7 +133,6 @@ export function setVolume(v: number): void {
 export async function seek(time: number): Promise<void> {
     if (!context || !playbackBuffer) return;
 
-    console.debug(`Seeking to ${time}`);
     // Flag for avoiding playback when currentNode is stopped.
     seeking = true;
     isSeeking.set(seeking);
@@ -234,11 +233,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
     timeInterval = setInterval(updateCurrentTime, 500);
     sourceNode.start(0, offset);
     // preload some more audio
-    console.debug(playbackBuffer?.duration - trackDuration);
-    if (playbackBuffer && playbackBuffer?.duration < trackDuration) {
-        console.debug(`Buffering more audio!`);
-        bufferAudio();
-    }
+    if (playbackBuffer && playbackBuffer?.duration < trackDuration) bufferAudio();
 
     sourceNode.onended = () => {
         if (seeking) return;
@@ -299,8 +294,6 @@ export function resetStream(): void {
     decodeQueue = []; 
     chunkBuffer = new Uint8Array(0);
     workingFrame = new Uint8Array(0);
-    console.log(`time: ${timeElapsed} start: ${startTime} decodeQueue: ${decodeQueue} chunkBuffer: ${chunkBuffer} frame: ${workingFrame}`);
-    console.log(`context: ${context} buffer: ${playbackBuffer}`)
     playing = true;
     isPlaying.set(true);
 }
@@ -370,7 +363,6 @@ export function fetchStream(host: string, track: Track, sessionId: string): void
     // event for connection closing
     audioStream.on('end', async () => {
         console.info(`(${host}) (${sessionId}) Stream complete.`);
-        console.debug(`Frame count: ${frameCount}`);
     });
 }
 

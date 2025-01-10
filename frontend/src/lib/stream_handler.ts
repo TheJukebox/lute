@@ -171,8 +171,10 @@ export async function seek(time: number): Promise<void> {
 
 }
 
-function bufferComplete(): boolean | null {
-    return playbackBuffer && Math.round(playbackBuffer.duration) >= trackDuration;
+function bufferComplete(): boolean {
+    console.debug((playbackBuffer && Math.round(playbackBuffer.duration) >= trackDuration));
+    const bufferStatus: boolean | null = (playbackBuffer && Math.round(playbackBuffer.duration) >= trackDuration);
+    return bufferStatus ? true : false;
 }
 
 /**
@@ -190,7 +192,12 @@ export async function bufferAudio(): Promise<void> {
 
     // Use the stream worker to fetch more frames
     let msg: FrameMessage = {type: 'dequeue', frame: undefined};
-    while (decodeQueue.length < 5 || bufferComplete()) {
+    while (decodeQueue.length < 5) {
+        if (bufferComplete()) {
+            clearInterval(bufferInterval); 
+            clearInterval(buffTimeInterval);
+            return;
+        }
         streamWorker.postMessage(msg);
         await new Promise(resolve => setTimeout(resolve, 100));
     }

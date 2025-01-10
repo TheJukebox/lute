@@ -23,7 +23,7 @@
 	let time: string = "0:00";
 	let maxTime: string = "0:00";
 	let fillPercentage: number = 0;
-	let bufferedPercentage: number = 0;
+	let bufferedPercentage: number = -1;
 	
 	const unsubBuff = bufferedTime.subscribe((value) => {
 		bufferedPercentage = (value / track.duration) * 100;
@@ -145,8 +145,9 @@
 	</a>
 
 	<div class='player' class:playing>
-		<audio>
-		</audio>
+		{#if bufferedPercentage === 0}
+			<div class='buffering'></div>
+		{/if}
 
 		<div class='albumArt'>
 			<span>?</span>
@@ -265,6 +266,27 @@
 		z-index: 2;
 		box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.3);
 	}
+
+	.buffering {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 50px;
+		height: 50px;
+		border-top: 5px solid var(--goldenrod);
+		border-radius: 50%;
+		animation: spin 0.5s linear infinite;
+	}
+
+	@keyframes spin {
+	0% {
+		transform: translate(-50%, -50%) rotate(0deg);
+	}
+	100% {
+		transform: translate(-50%, -50%) rotate(360deg);
+	}
+}
 
 	.streamControl {
 		position: absolute;

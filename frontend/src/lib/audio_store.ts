@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { fetchStream, togglePlayback, seek } from '$lib/stream_handler';
+import { fetchStream, seek } from '$lib/stream_handler';
 
 export type Track = {
     path: string;
@@ -8,6 +8,12 @@ export type Track = {
     album: string;
     duration: number;
 }
+
+export const library: Array<Track> = [
+        { title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', path: "uploads/converted/SomethingInTheWay.aac", duration: 235 },
+        { title: 'Breezeblocks', artist: 'alt-j', album: 'alt-j', path: "uploads/converted/Breezeblocks.aac", duration: 217 },
+        { title: 'R U Mine', artist: 'Arctic Monkeys', album: 'AM', path: "uploads/converted/R_U_Mine.aac", duration: 200 },
+];
 
 // Writable stores
 export const isPlaying = writable<boolean>(false);

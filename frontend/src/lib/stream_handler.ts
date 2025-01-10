@@ -65,7 +65,7 @@ if (typeof window !== 'undefined') {
                 }
                 break;
             case 'dequeue_fail':
-                console.error('Failed to dequeue a frame!');
+                console.warn('Failed to dequeue a frame!');
                 break;
             case 'empty':
                 console.debug('Frame queue has been emptied.');
@@ -171,6 +171,9 @@ export async function seek(time: number): Promise<void> {
 
 }
 
+function bufferComplete(): boolean | null {
+    return playbackBuffer && Math.round(playbackBuffer.duration) >= trackDuration;
+}
 
 /**
  * Decodes queued frames and updates the playback buffer with the resulting audio.
@@ -179,7 +182,7 @@ export async function seek(time: number): Promise<void> {
  */
 export async function bufferAudio(): Promise<void> {
     if (!context) context = createAudioContext();
-    if (playbackBuffer && playbackBuffer?.duration >= trackDuration) {
+    if (bufferComplete()) {
         clearInterval(bufferInterval); 
         clearInterval(buffTimeInterval);
         return;
@@ -187,12 +190,7 @@ export async function bufferAudio(): Promise<void> {
 
     // Use the stream worker to fetch more frames
     let msg: FrameMessage = {type: 'dequeue', frame: undefined};
-    while (decodeQueue.length < 5) {
-        if (playbackBuffer && playbackBuffer?.duration >= trackDuration) {
-            clearInterval(bufferInterval);
-            clearInterval(buffTimeInterval);
-            return;
-        }
+    while (decodeQueue.length < 5 || bufferComplete()) {
         streamWorker.postMessage(msg);
         await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -312,6 +310,8 @@ export function resetStream(): void {
     }
     context = null;
     playbackBuffer = null;
+    bufferedTime.set(0);
+    clearInterval(buffTimeInterval);
 
     clearInterval(timeInterval);
     timeElapsed = 0;

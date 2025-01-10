@@ -1,14 +1,8 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
-    import { startStream } from '$lib/audio_store';
+    import { startStream, library } from '$lib/audio_store';
     
     import type { Track } from '$lib/audio_store';
-
-    // some fake track data
-    let tracks: Track[] = [
-        { title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', path: "uploads/converted/SomethingInTheWay.aac", duration: 235 },
-        { title: 'Breezeblocks', artist: 'alt-j', album: 'alt-j', path: "uploads/converted/Breezeblocks.aac", duration: 226 },
-    ];
 
 	/**
 	 * Takes a time in seconds and converts it to a string in the format MM:SS
@@ -46,7 +40,7 @@
             </tr>
         </thead>
         <tbody>
-            {#each tracks as track}
+            {#each library as track}
                 <tr class='table_entry' onclick={() => startStream(track)}> 
                     <td>{track.title}</td>
                     <td>{formatSeconds(track.duration)}</td>

@@ -124,7 +124,7 @@
 	function updateVolume(event: Event): void {
 		const target = event.target as HTMLInputElement;
 		currentVolume = parseFloat(target.value);
-		setVolume(target.value);
+		setVolume(parseFloat(target.value));
 	}
 
 </script>

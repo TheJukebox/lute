@@ -22,6 +22,7 @@ func CreateGrpcClient() (*grpc.ClientConn, error) {
 		"localhost:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
+	conn.Connect()
 	if err != nil {
 		return nil, err
 	}

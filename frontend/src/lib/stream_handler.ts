@@ -33,6 +33,7 @@ let startTime: number = 0;
 let volume: number = 1;
 let unsubTime: Unsubscriber;
 let unsubPlay: Unsubscriber;
+let trackDuration: number = 0;
 
 // Audio data
 let playbackBuffer: AudioBuffer | null = null;
@@ -165,10 +166,12 @@ export async function seek(time: number): Promise<void> {
  */
 export async function bufferAudio(): Promise<void> {
     if (!context) context = createAudioContext();
+    if (playbackBuffer && playbackBuffer?.duration >= trackDuration) return; 
 
     // Use the stream worker to fetch more frames
     let msg: FrameMessage = {type: 'dequeue', frame: undefined};
     while (decodeQueue.length < 5) {
+        if (playbackBuffer && playbackBuffer?.duration >= trackDuration) return; 
         streamWorker.postMessage(msg);
         await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -176,11 +179,14 @@ export async function bufferAudio(): Promise<void> {
     // combine some frames together
     let data: Uint8Array = new Uint8Array(0);
     while (decodeQueue.length > 0) {
-        data = concatArrays(data, decodeQueue.shift()?.frame);
+        let frame: Uint8Array | undefined = decodeQueue.shift()?.frame;
+        if (frame) {
+            data = concatArrays(data, frame);
+        }
     }
 
     // decode the combined frames
-    let audio: AudioBuffer = await context.decodeAudioData(data.buffer);
+    let audio: AudioBuffer = await context.decodeAudioData(data.buffer as ArrayBuffer);
     playbackBuffer = playbackBuffer ? concatAudioBuffers(playbackBuffer, audio) : audio;
 }
 
@@ -228,7 +234,11 @@ async function playBuffer(offset: number = 0): Promise<void> {
     timeInterval = setInterval(updateCurrentTime, 500);
     sourceNode.start(0, offset);
     // preload some more audio
-    bufferAudio();
+    console.debug(playbackBuffer?.duration - trackDuration);
+    if (playbackBuffer && playbackBuffer?.duration < trackDuration) {
+        console.debug(`Buffering more audio!`);
+        bufferAudio();
+    }
 
     sourceNode.onended = () => {
         if (seeking) return;
@@ -316,7 +326,8 @@ export function fetchStream(host: string, track: Track, sessionId: string): void
     const request: proto.stream.AudioStreamRequest = new proto.stream.AudioStreamRequest();
     request.setFileName(track.path);
     request.setSessionId(sessionId);
-
+    trackDuration = track.duration;
+    
     // request the stream
     console.info(`(${host}) (${sessionId}) Requestion stream for '${track.path}'...`);
     const audioStream: ClientReadableStream<proto.stream.AudioStreamChunk> = service.streamAudio(request, null);
@@ -359,6 +370,7 @@ export function fetchStream(host: string, track: Track, sessionId: string): void
     // event for connection closing
     audioStream.on('end', async () => {
         console.info(`(${host}) (${sessionId}) Stream complete.`);
+        console.debug(`Frame count: ${frameCount}`);
     });
 }
 

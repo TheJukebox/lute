@@ -1,24 +1,16 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
     import { startStream, currentTime } from '$lib/audio_store';
+    
+    import type { Track } from '$lib/audio_store';
 
     let time = 0;
     currentTime.subscribe((value: number) => time = value);
 
-    type SongData = {
-        id: number;
-        title: string;
-        artist: string;
-        album: string;
-        num: number;
-        path: string;
-        duration: number;
-    }
-
-    // some fake song data
-    let songs: SongData[] = [
-        { id: 1, title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', num: 1, path: "uploads/converted/SomethingInTheWay.aac", duration: 235 },
-        { id: 2, title: 'Breezeblocks', artist: 'alt-j', album: 'alt-j', num: 1, path: "uploads/converted/Breezeblocks.aac", duration: 226 },
+    // some fake track data
+    let tracks: Track[] = [
+        { title: 'Something In The Way', artist: 'Nirvana', album: 'Nevermind', path: "uploads/converted/SomethingInTheWay.aac", duration: 235 },
+        { title: 'Breezeblocks', artist: 'alt-j', album: 'alt-j', path: "uploads/converted/Breezeblocks.aac", duration: 226 },
     ];
 
 	/**
@@ -46,7 +38,7 @@
     <h1>Your Library</h1>
 </div>
 <div class='library_container'>
-    <table class='song_table'>
+    <table class='track_table'>
         <thead class='table_header'>
             <tr>
                 <th>Title</th>
@@ -57,12 +49,12 @@
             </tr>
         </thead>
         <tbody>
-            {#each songs as song}
-                <tr class='table_entry' onclick={() => startStream(song.path, song.title, song.artist, song.album, song.duration)}> 
-                    <td>{song.title}</td>
-                    <td>{formatSeconds(song.duration)}</td>
-                    <td>{song.artist}</td>
-                    <td>{song.album}</td>
+            {#each tracks as track}
+                <tr class='table_entry' onclick={() => startStream(track)}> 
+                    <td>{track.title}</td>
+                    <td>{formatSeconds(track.duration)}</td>
+                    <td>{track.artist}</td>
+                    <td>{track.album}</td>
                     <td></td>
                 </tr>
             {/each}
@@ -92,7 +84,7 @@
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    .song_table {
+    .track_table {
         width: 90%;
         border-spacing: 0;
         margin: auto;

@@ -17,7 +17,6 @@
 		title: '',
 		artist: '',
 		album: '',
-		paused: true,
 		duration: 0,
 	};
 

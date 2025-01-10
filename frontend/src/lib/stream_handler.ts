@@ -3,7 +3,7 @@ import { currentTime, isPlaying, isSeeking } from '$lib/audio_store';
 
 import type { ClientReadableStream } from 'grpc-web';
 import type { Unsubscriber } from 'svelte/store';
-
+import type { Track } from '$lib/audio_store';
 
 type Frame = {
     frame: Uint8Array;
@@ -299,10 +299,10 @@ export function resetStream(): void {
  * Fetches a new stream.
  * @function
  * @param host The host/port to receive the stream from.
- * @param path The path for the file to stream on the server.
+ * @param track.path The path for the file to stream on the server.
  * @param sessionId A session ID to associate with the stream.
  */
-export function fetchStream(host: string, path: string, sessionId: string): void {   
+export function fetchStream(host: string, track: Track, sessionId: string): void {   
     // reset stream state
     resetStream();
 
@@ -314,11 +314,11 @@ export function fetchStream(host: string, path: string, sessionId: string): void
     );
 
     const request: proto.stream.AudioStreamRequest = new proto.stream.AudioStreamRequest();
-    request.setFileName(path);
+    request.setFileName(track.path);
     request.setSessionId(sessionId);
 
     // request the stream
-    console.info(`(${host}) (${sessionId}) Requestion stream for '${path}'...`);
+    console.info(`(${host}) (${sessionId}) Requestion stream for '${track.path}'...`);
     const audioStream: ClientReadableStream<proto.stream.AudioStreamChunk> = service.streamAudio(request, null);
     let frameCount: number = 0;
 

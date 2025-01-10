@@ -31,6 +31,10 @@ self.onmessage = async (event: MessageEvent<FrameMessage>) => {
                 msg.type = 'dequeue_fail';
             }
             break;
+        case 'empty':
+            frameQueue = [];
+            msg.type = 'empty';
+            break;
     }
     postMessage(msg);
 };

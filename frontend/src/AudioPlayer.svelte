@@ -362,6 +362,7 @@
 		height: 100%;
 		background-color: var(--bright-pink-crayola);
 		box-shadow: 0 0 2px rgba(255, 0, 191, 0.4);
+		transition: width 0.1s ease-in-out;
 	}
 
 	.playhead {
@@ -372,6 +373,7 @@
 		background-color: var(--goldenrod);
 		border-radius: 2px;
 		border-width: 0px;
+		transition: transform 0.1s ease-in-out;
 	}
 
 	.details {

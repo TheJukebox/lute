@@ -2,6 +2,7 @@ import '$lib/gen/stream_grpc_web_pb';
 import { currentTime, isPlaying, isSeeking } from '$lib/audio_store';
 
 import type { ClientReadableStream } from 'grpc-web';
+import type { Unsubscriber } from 'svelte/store';
 
 
 type Frame = {
@@ -28,6 +29,8 @@ let seeking = false;
 let timeElapsed: number = 0;
 let startTime: number = 0;
 let volume: number = 1;
+let unsubTime: Unsubscriber;
+let unsubPlay: Unsubscriber;
 
 // Audio data
 let playbackBuffer: AudioBuffer | null = null;
@@ -57,8 +60,12 @@ if (typeof window !== 'undefined') {
             case 'dequeue_fail':
                 console.error('Failed to dequeue a frame!');
                 break;
+            case 'empty':
+                console.debug('Frame queue has been emptied.');
+                break;
             case 'undefined':
                 console.error('Worker responded with blank message.');
+                break;
         }
     }
 }
@@ -74,8 +81,8 @@ if (typeof window !== 'undefined') {
  * @returns Promise<void>
  */
 export async function togglePlayback(): Promise<void> {
-    isPlaying.subscribe((value: boolean) => playing = value);
-    currentTime.subscribe((value: number) => timeElapsed = value);
+    unsubPlay = isPlaying.subscribe((value: boolean) => playing = value);
+    unsubTime = currentTime.subscribe((value: number) => timeElapsed = value);
     if (playing) {
         playBuffer(timeElapsed);
     } else {
@@ -190,11 +197,9 @@ async function playBuffer(offset: number = 0): Promise<void> {
     // start playback
     startTime = context.currentTime - offset;
     timeInterval = setInterval(updateCurrentTime, 500);
-    console.log("new buff", sourceNode.buffer);
     sourceNode.start(0, offset);
     // preload some more audio
-    console.debug(playbackBuffer?.duration);
-    if (playbackBuffer.duration < 215.0) bufferAudio();
+    bufferAudio();
 
     sourceNode.onended = () => {
         if (seeking) return;
@@ -217,8 +222,40 @@ async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
     streamWorker.postMessage(msg);
 }
 
+export function resetStream(): void {
+    playing = false;
+    isPlaying.set(false);
+    if (currentNode) {
+        currentNode.stop(0);
+        currentNode.disconnect();
+        currentNode = null;
+    }
+    if (currentGain) {
+        currentGain.disconnect();
+        currentGain = null;
+    }
+    if (context) {
+        context.close();
+    }
+    context = null;
+    playbackBuffer = null;
+
+    clearInterval(timeInterval);
+    timeElapsed = 0;
+    startTime = 0;
+    currentTime.set(0);
+    streamWorker.postMessage({type: 'empty', frame: undefined});
+    decodeQueue = []; 
+    chunkBuffer = new Uint8Array(0);
+    workingFrame = new Uint8Array(0);
+    console.log(`time: ${timeElapsed} start: ${startTime} decodeQueue: ${decodeQueue} chunkBuffer: ${chunkBuffer} frame: ${workingFrame}`);
+    console.log(`context: ${context} buffer: ${playbackBuffer}`)
+    playing = true;
+    isPlaying.set(true);
+}
 
 export function fetchStream(host: string, path: string, sessionId: string): void {   
+    resetStream();
     const service: proto.stream.AudioStreamClient = new proto.stream.AudioStreamClient(
         host,
         null,
@@ -379,6 +416,5 @@ function createAudioContext(): AudioContext {
         "sampleRate": 44100,
         "latencyHint": "playback",
     }); 
-    startTime = context.currentTime;
     return context;
 }

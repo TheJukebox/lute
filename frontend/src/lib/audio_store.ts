@@ -13,6 +13,7 @@ export type Track = {
 export const isPlaying = writable<boolean>(false);
 export const isSeeking = writable<boolean>(false);
 export const currentTime = writable<number>(0);
+export const bufferedTime = writable<number>(0);
 export const currentTrack = writable<Track> ({
     path: '',
     title: '--',

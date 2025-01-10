@@ -1,11 +1,8 @@
 <script lang='ts'>
     import AudioPlayer from '../../AudioPlayer.svelte';
-    import { startStream, currentTime } from '$lib/audio_store';
+    import { startStream } from '$lib/audio_store';
     
     import type { Track } from '$lib/audio_store';
-
-    let time = 0;
-    currentTime.subscribe((value: number) => time = value);
 
     // some fake track data
     let tracks: Track[] = [

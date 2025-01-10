@@ -1,6 +1,6 @@
 <script lang='ts'>
 	import { onDestroy } from 'svelte';
-	import { currentTrack, currentTime, seekToTime, isPlaying } from '$lib/audio_store';
+	import { currentTrack, currentTime, seekToTime, isPlaying, bufferedTime } from '$lib/audio_store';
 	import { setVolume } from '$lib/stream_handler';
 
 	import type { Track } from '$lib/audio_store'
@@ -20,9 +20,14 @@
 		duration: 0,
 	};
 
-	let time = "0:00";
-	let maxTime = "0:00";
-	let fillPercentage = 0;
+	let time: string = "0:00";
+	let maxTime: string = "0:00";
+	let fillPercentage: number = 0;
+	let bufferedPercentage: number = 0;
+	
+	const unsubBuff = bufferedTime.subscribe((value) => {
+		bufferedPercentage = (value / track.duration) * 100;
+	});
 
 	const unsubTime = currentTime.subscribe((value) => {
 		time = formatSeconds(value);
@@ -43,6 +48,7 @@
 
 	onDestroy(() => {
 		unsubPlay();
+		unsubBuff();
 		unsubTrack();
 		unsubTime();
 	});
@@ -89,9 +95,9 @@
 		let width = parseFloat(style.width);
 
 		let percentage: number = clamp(0, 100, Math.floor((relativePos / width) * 100));
-		let seekFill: HTMLElement = seekbar.querySelector(".seekbar span") as HTMLElement;
-		seekFill.style.width = `${percentage}%`;
-		seekFill.ariaValueNow = `${percentage}`;
+		let seekFill: HTMLElement = seekbar.querySelector(".seekbar #seekFill") as HTMLElement;
+		seekFill.style.width = `${Math.min(percentage, bufferedPercentage)}%`;
+		seekFill.ariaValueNow = `${Math.min(percentage, bufferedPercentage)}`;
 		seekToTime((percentage / 100) * track.duration);
 	}
 	
@@ -166,9 +172,13 @@
 			aria-valuemax=100
 			tabindex=0
 		>
+			<span class='seekbar' id='bufferFill' style="width: {bufferedPercentage}%">
+			</span>
+
 			<span class='seekbar' id="seekFill" style="width: {fillPercentage}%">
 				<div class='playhead' id="playhead"></div>
 			</span>
+
 		</div>
 
 		<div class='streamControl'>
@@ -355,12 +365,21 @@
 		background-color: var(--viridian-darker);
 	}
 
-	.seekbar span{
+	.seekbar #seekFill {
 		min-width: 0;
 		max-width: 100%;
 		height: 100%;
 		background-color: var(--bright-pink-crayola);
 		box-shadow: 0 0 2px rgba(255, 0, 191, 0.4);
+		transition: width 0.1s ease-in-out;
+	}
+
+	.seekbar #bufferFill {
+		min-width: 0;
+		max-width: 100%;
+		height: 100%;
+		background-color: var(--indigo-dye);
+		box-shadow: 0 0 0;
 		transition: width 0.1s ease-in-out;
 	}
 

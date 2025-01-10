@@ -1,5 +1,5 @@
 import '$lib/gen/stream_grpc_web_pb';
-import { currentTime, isPlaying, isSeeking } from '$lib/audio_store';
+import { currentTime, bufferedTime, isPlaying, isSeeking } from '$lib/audio_store';
 
 import type { ClientReadableStream } from 'grpc-web';
 import type { Unsubscriber } from 'svelte/store';
@@ -26,11 +26,14 @@ let context: AudioContext | null = null;
 let currentNode: AudioBufferSourceNode | null = null;
 let currentGain: GainNode | null = null;
 let timeInterval: number = 0;
+let bufferInterval: number = 0;
+let buffTimeInterval: number = 0;
 let playing = false;
 let seeking = false;
 let timeElapsed: number = 0;
 let startTime: number = 0;
 let volume: number = 1;
+let cachedVolume: number = 1;
 let unsubTime: Unsubscriber;
 let unsubPlay: Unsubscriber;
 let trackDuration: number = 0;
@@ -103,6 +106,15 @@ export async function togglePlayback(): Promise<void> {
     }
 }
 
+/**
+ * Updates the buffered time. 
+ * @returns void
+ */
+export function updateBufferedTime(): void {
+    if (!context || !playing) return;
+    // set the current time here every 1 second.
+    if (playbackBuffer) bufferedTime.set(playbackBuffer.duration);
+}
 
 /**
  * Updates the elapsed time of playback. 
@@ -155,6 +167,8 @@ export async function seek(time: number): Promise<void> {
 
     // begin playback again if required
     if (playing) playBuffer(timeElapsed);
+
+
 }
 
 
@@ -165,12 +179,20 @@ export async function seek(time: number): Promise<void> {
  */
 export async function bufferAudio(): Promise<void> {
     if (!context) context = createAudioContext();
-    if (playbackBuffer && playbackBuffer?.duration >= trackDuration) return; 
+    if (playbackBuffer && playbackBuffer?.duration >= trackDuration) {
+        clearInterval(bufferInterval); 
+        clearInterval(buffTimeInterval);
+        return;
+    }
 
     // Use the stream worker to fetch more frames
     let msg: FrameMessage = {type: 'dequeue', frame: undefined};
     while (decodeQueue.length < 5) {
-        if (playbackBuffer && playbackBuffer?.duration >= trackDuration) return; 
+        if (playbackBuffer && playbackBuffer?.duration >= trackDuration) {
+            clearInterval(bufferInterval);
+            clearInterval(buffTimeInterval);
+            return;
+        }
         streamWorker.postMessage(msg);
         await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -189,6 +211,12 @@ export async function bufferAudio(): Promise<void> {
     playbackBuffer = playbackBuffer ? concatAudioBuffers(playbackBuffer, audio) : audio;
 }
 
+async function bufferReady(): Promise<void> {
+    while (!playbackBuffer) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+}
+
 /**
  * Recursively plays back the buffered audio.
  * @function
@@ -198,7 +226,7 @@ export async function bufferAudio(): Promise<void> {
 async function playBuffer(offset: number = 0): Promise<void> {
     if (!context) context = createAudioContext();
     if (!playbackBuffer) {
-        await bufferAudio();
+        await bufferReady();
     }
 
     // cleanup
@@ -217,7 +245,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
     // gain
     const gainNode = context.createGain();
     gainNode.connect(filterNode);
-    gainNode.gain.setValueAtTime(volume, 0);
+    gainNode.gain.setValueAtTime(seeking ? 0 : volume, 0);
     currentGain = gainNode;
 
     // buffer
@@ -231,9 +259,8 @@ async function playBuffer(offset: number = 0): Promise<void> {
     // start playback
     startTime = context.currentTime - offset;
     timeInterval = setInterval(updateCurrentTime, 500);
+    buffTimeInterval = setInterval(updateBufferedTime, 500);
     sourceNode.start(0, offset);
-    // preload some more audio
-    if (playbackBuffer && playbackBuffer?.duration < trackDuration) bufferAudio();
 
     sourceNode.onended = () => {
         if (seeking) return;
@@ -325,6 +352,7 @@ export function fetchStream(host: string, track: Track, sessionId: string): void
     console.info(`(${host}) (${sessionId}) Requestion stream for '${track.path}'...`);
     const audioStream: ClientReadableStream<proto.stream.AudioStreamChunk> = service.streamAudio(request, null);
     let frameCount: number = 0;
+    bufferInterval = setInterval(bufferAudio, 1000);
 
     // Handle frame buffering
     audioStream.on('data', (response: proto.stream.AudioStreamChunk) => {

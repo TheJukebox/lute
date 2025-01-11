@@ -1,5 +1,5 @@
 import '$lib/gen/stream_grpc_web_pb';
-import { currentTime, bufferedTime, isPlaying, isSeeking } from '$lib/audio_store';
+import { currentTime, bufferedTime, isPlaying, isSeeking, buffering } from '$lib/audio_store';
 
 import type { ClientReadableStream } from 'grpc-web';
 import type { Unsubscriber } from 'svelte/store';
@@ -167,14 +167,16 @@ export async function seek(time: number): Promise<void> {
 
     // begin playback again if required
     if (playing) playBuffer(timeElapsed);
-
-
 }
 
 function bufferComplete(): boolean {
-    console.debug((playbackBuffer && Math.round(playbackBuffer.duration) >= trackDuration));
-    const bufferStatus: boolean | null = (playbackBuffer && Math.round(playbackBuffer.duration) >= trackDuration);
-    return bufferStatus ? true : false;
+    const tolerance = 1;
+    if (!playbackBuffer) return false;
+    const bufferDuration: number = Math.round(playbackBuffer.duration);
+    // 100 - 100 = 0
+    // 101 - 100 = 1
+    // 99 - 100 = -1
+    return bufferDuration >= trackDuration - tolerance;
 }
 
 /**
@@ -196,7 +198,7 @@ export async function bufferAudio(): Promise<void> {
         if (bufferComplete()) {
             clearInterval(bufferInterval); 
             clearInterval(buffTimeInterval);
-            return;
+            break;
         }
         streamWorker.postMessage(msg);
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -232,6 +234,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
     if (!context) context = createAudioContext();
     if (!playbackBuffer) {
         await bufferReady();
+        buffering.set(false);
     }
 
     // cleanup

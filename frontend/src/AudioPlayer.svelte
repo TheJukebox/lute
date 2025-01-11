@@ -1,6 +1,6 @@
 <script lang='ts'>
 	import { onDestroy } from 'svelte';
-	import { currentTrack, currentTime, seekToTime, isPlaying, bufferedTime } from '$lib/audio_store';
+	import { currentTrack, currentTime, seekToTime, isPlaying, bufferedTime, buffering } from '$lib/audio_store';
 	import { setVolume } from '$lib/stream_handler';
 
 	import type { Track } from '$lib/audio_store'
@@ -24,6 +24,11 @@
 	let maxTime: string = "0:00";
 	let fillPercentage: number = 0;
 	let bufferedPercentage: number = -1;
+	let isBuffering: boolean = false;
+
+	const usubIsBuff = buffering.subscribe((value) => {
+		isBuffering = value;
+	});
 	
 	const unsubBuff = bufferedTime.subscribe((value) => {
 		bufferedPercentage = (value / track.duration) * 100;
@@ -145,7 +150,7 @@
 	</a>
 
 	<div class='player' class:playing>
-		{#if bufferedPercentage === 0}
+		{#if isBuffering}
 			<div class='buffering'></div>
 		{/if}
 

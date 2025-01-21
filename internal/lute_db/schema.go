@@ -1,4 +1,4 @@
-package db
+package lute_db
 
 import (
 	"database/sql"

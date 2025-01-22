@@ -34,7 +34,7 @@ func getPsqlType(t reflect.Type) string {
 	return ""
 }
 
-func createTableFromModel(fields reflect.Type, name string) string {
+func createTableFromModel(fields reflect.Type, name string, conn *pgx.Conn) {
 	var columns []string
 	for i := range fields.NumField() {
 		field := fields.Field(i)
@@ -42,12 +42,18 @@ func createTableFromModel(fields reflect.Type, name string) string {
 		columns = append(columns, fmt.Sprintf("\t%v %v", strings.ToLower(field.Name), t))
 	}
 	columnsString := strings.Join(columns, ",\n")
-	return fmt.Sprintf("CREATE TABLE IF NOT EXISTS %v (\n%v,\n\tPRIMARY KEY (id)\n);", name, columnsString)
+	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %v (\n%v,\n\tPRIMARY KEY (id)\n);", name, columnsString)
+	_, err := conn.Query(query)
+	if err != nil {
+		log.Printf("Failed to migrate db: %v", err)
+	}
+	defer conn.Close()
 }
 
 func Connect(config pgx.ConnConfig) (*pgx.ConnPool, error) {
 	connPoolConf := pgx.ConnPoolConfig{}
 	connPoolConf.ConnConfig = config
+	connPoolConf.MaxConnections = 10
 	connection, err := pgx.NewConnPool(connPoolConf)
 	if err != nil {
 		return nil, err
@@ -57,57 +63,45 @@ func Connect(config pgx.ConnConfig) (*pgx.ConnPool, error) {
 
 func CreateTables(conn *pgx.ConnPool) {
 	log.Print("(Sorta but not really) Migrating database...")
-	users := createTableFromModel(reflect.TypeOf(models.User{}), "users")
-	userConn, err := conn.Acquire()
+	newConn, err := conn.Acquire()
 	if err != nil {
 		log.Printf("Failed db migration: %v", err)
 	}
-	userConn.Query(users)
+	createTableFromModel(reflect.TypeOf(models.User{}), "users", newConn)
 	log.Print("\t Migrated 'users'...")
-	userConn.Close()
 
-	tracks := createTableFromModel(reflect.TypeOf(models.Track{}), "tracks")
-	trackConn, err := conn.Acquire()
+	newConn, err = conn.Acquire()
 	if err != nil {
 		log.Printf("Failed db migration: %v", err)
 	}
-	trackConn.Query(tracks)
+	createTableFromModel(reflect.TypeOf(models.Track{}), "tracks", newConn)
 	log.Print("\t Migrated 'tracks'...")
-	trackConn.Close()
 
-	albums := createTableFromModel(reflect.TypeOf(models.Album{}), "albums")
-	albumConn, err := conn.Acquire()
+	newConn, err = conn.Acquire()
 	if err != nil {
 		log.Printf("Failed db migration: %v", err)
 	}
-	albumConn.Query(albums)
+	createTableFromModel(reflect.TypeOf(models.Album{}), "albums", newConn)
 	log.Print("\t Migrated 'albums'...")
-	albumConn.Close()
 
-	artists := createTableFromModel(reflect.TypeOf(models.Artist{}), "artists")
-	artistConn, err := conn.Acquire()
+	newConn, err = conn.Acquire()
 	if err != nil {
 		log.Printf("Failed db migration: %v", err)
 	}
-	artistConn.Query(artists)
+	createTableFromModel(reflect.TypeOf(models.Artist{}), "artists", newConn)
 	log.Print("\t Migrated 'artists'...")
-	artistConn.Close()
 
-	playlists := createTableFromModel(reflect.TypeOf(models.Playlist{}), "playlists")
-	playlistConn, err := conn.Acquire()
+	newConn, err = conn.Acquire()
 	if err != nil {
 		log.Printf("Failed db migration: %v", err)
 	}
-	playlistConn.Query(playlists)
+	createTableFromModel(reflect.TypeOf(models.Playlist{}), "playlists", newConn)
 	log.Print("\t Migrated 'playlists'...")
-	defer playlistConn.Close()
 
-	playlisttrack := createTableFromModel(reflect.TypeOf(models.PlaylistTrack{}), "playlisttrack")
-	playlisttrackConn, err := conn.Acquire()
+	newConn, err = conn.Acquire()
 	if err != nil {
 		log.Printf("Failed db migration: %v", err)
 	}
-	playlisttrackConn.Query(playlisttrack)
+	createTableFromModel(reflect.TypeOf(models.PlaylistTrack{}), "playlisttrack", newConn)
 	log.Print("\t Migrated 'playlisttrack'...")
-	playlisttrackConn.Close()
 }

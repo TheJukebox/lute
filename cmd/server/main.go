@@ -9,27 +9,52 @@ import (
 	streamPb "lute/gen/stream"
 	uploadPb "lute/gen/upload"
 	api "lute/internal/lute_api"
+	db "lute/internal/lute_db"
 	mw "lute/internal/middleware"
 
+	"github.com/jackc/pgx"
 	"google.golang.org/grpc"
 )
 
 func debugSetup() {
 	log.Printf("Creating debug folders...")
-	os.Mkdir("uploads/raw", 0700)
-	os.Mkdir("uploads/converted", 0700)
+	err := os.Mkdir("uploads/raw", 0700)
+	if err != nil {
+		log.Printf("Failed to create uploads/raw: %v", err)
+	}
+	err = os.Mkdir("uploads/converted", 0700)
+	if err != nil {
+		log.Printf("Failed to create uploads/converted: %v", err)
+	}
+	log.Printf("Done!")
 }
 
 func main() {
 	// setup folders
 	debugSetup()
 
+	// db
+	dbConfig := &pgx.ConnConfig{}
+	dbConfig.Host = "127.0.0.1"
+	dbConfig.Port = 5432
+	dbConfig.Database = "lute"
+	dbConfig.User = "postgres"
+	dbConfig.Password = "postgres"
+	log.Printf("Connecting to PostgreSQL at %v:%v...", dbConfig.Host, dbConfig.Port)
+	dbConnection, err := db.Connect(*dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	log.Print("Connected!")
+	db.CreateTables(dbConnection)
+
+	// start gRPC server
 	listener, _ := net.Listen("tcp", "127.0.0.1:50051")
 	grpcNative := grpc.NewServer()
 	uploadPb.RegisterUploadServer(grpcNative, &api.UploadService{})
 	streamPb.RegisterAudioStreamServer(grpcNative, &api.StreamService{})
 	go grpcNative.Serve(listener)
-	log.Printf("gRPC Native server listening at %v", listener.Addr())
+	log.Printf("gRPC server listening at %v", listener.Addr())
 
 	grpcWeb := grpc.NewServer()
 	uploadPb.RegisterUploadServer(grpcWeb, &api.UploadService{})
@@ -44,6 +69,7 @@ func main() {
 	audioClient := streamPb.NewAudioStreamClient(client)
 	log.Println("Started audio streaming client for HTTP/1.1 to HTTP/2...")
 
+	// Register middleware
 	mux := http.NewServeMux()
 	mux.Handle("/upload.Upload/UploadFile", grpcWeb)
 	mux.Handle("/stream.AudioStream/StreamAudio", grpcWeb)

@@ -5,41 +5,42 @@ import (
 )
 
 type Track struct {
-	id       uuid.UUID
-	name     string
-	artistId uuid.UUID
-	albumId  uuid.UUID
-	duration int
+	Id       uuid.UUID
+	Name     string
+	ArtistId uuid.UUID
+	AlbumId  uuid.UUID
+	Duration int
 }
 
 type Album struct {
-	id       uuid.UUID
-	name     string
-	artistId uuid.UUID
+	Id       uuid.UUID
+	Name     string
+	ArtistId uuid.UUID
 }
 
 type Artist struct {
-	id   uuid.UUID
-	name string
+	Id   uuid.UUID
+	Name string
 }
 
 type Playlist struct {
-	id     uuid.UUID
-	name   string
-	public bool
+	Id     uuid.UUID
+	UserId uuid.UUID
+	Name   string
+	Public bool
 }
 
 // composite for storing tracks associated with playlists
 type PlaylistTrack struct {
-	id         uuid.UUID
-	playlistId uuid.UUID
-	trackId    uuid.UUID
-	position   int
+	Id         uuid.UUID
+	PlaylistId uuid.UUID
+	TrackId    uuid.UUID
+	Position   int
 }
 
 // accounts
 type User struct {
-	id       uuid.UUID
-	username string
-	password string
+	Id       uuid.UUID
+	Username string
+	Password string
 }

@@ -1,10 +1,16 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+
+	"flag"
+	// how to handle cmdline flags
+	// https://gobyexample.com/command-line-flags
 
 	streamPb "lute/gen/stream"
 	uploadPb "lute/gen/upload"
@@ -30,13 +36,47 @@ func debugSetup() {
 }
 
 func main() {
+	// config file
+
+	type LuteConfig struct {
+		Host     string
+		GrpcPort int
+		HttpPort int
+		PgHost   string
+		PgPort   int
+		Debug    bool
+	}
+
+	config, err := os.ReadFile("lute.config.json")
+	if err != nil {
+		log.Fatalf("Failed to parse config file: %v", err)
+	}
+	var confData LuteConfig
+	json.Unmarshal(config, &confData)
+
+	// args
+	debug := flag.Bool("debug", confData.Debug, "Run Lute in debug mode.")
+	host := flag.String("host", confData.Host, "The hostname or address that the Lute backend should listen on.")
+	grpcPort := flag.Int("grpc", confData.GrpcPort, "The port that Lute should use for gRPC requests.")
+	grpcAddr := fmt.Sprintf("%v:%v", host, grpcPort)
+	httpPort := flag.Int("http", confData.HttpPort, "The port that Lute should use for HTTP requests.")
+	httpAddr := fmt.Sprintf("%v:%v", host, httpPort)
+
+	pgHost := flag.String("pg", confData.PgHost, "The hostname or address of the PostgreSQL database.")
+	pgPort := flag.Int("pg-port", confData.PgPort, "The port of the PostgreSQL database.")
+
+	flag.Parse()
+
 	// setup folders
-	debugSetup()
+	if *debug {
+		log.Printf("Starting Lute in debug mode...")
+		debugSetup()
+	}
 
 	// db
 	dbConfig := &pgx.ConnConfig{}
-	dbConfig.Host = "127.0.0.1"
-	dbConfig.Port = 5432
+	dbConfig.Host = *pgHost
+	dbConfig.Port = uint16(*pgPort)
 	dbConfig.Database = "lute"
 	dbConfig.User = "postgres"
 	dbConfig.Password = "postgres"
@@ -49,7 +89,7 @@ func main() {
 	db.CreateTables(dbConnection)
 
 	// start gRPC server
-	listener, _ := net.Listen("tcp", "127.0.0.1:50051")
+	listener, _ := net.Listen("tcp", grpcAddr)
 	grpcNative := grpc.NewServer()
 	uploadPb.RegisterUploadServer(grpcNative, &api.UploadService{})
 	streamPb.RegisterAudioStreamServer(grpcNative, &api.StreamService{})
@@ -77,7 +117,7 @@ func main() {
 	middleware = mw.CorsMiddleware(middleware)
 
 	server := &http.Server{
-		Addr:    "127.0.0.1:8080",
+		Addr:    httpAddr,
 		Handler: middleware,
 	}
 

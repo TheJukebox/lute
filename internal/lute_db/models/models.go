@@ -6,6 +6,7 @@ import (
 
 type Track struct {
 	Id       uuid.UUID
+	Path     string
 	Name     string
 	ArtistId uuid.UUID
 	AlbumId  uuid.UUID

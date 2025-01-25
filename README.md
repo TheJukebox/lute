@@ -3,6 +3,51 @@
 Lute is a self-hosted streaming service, with a focus on concurrent listening,
 implemented in [Go](https://go.dev/).
 
+## Configuration
+
+You can configure the Lute backend using the `lute.config.json` file or command-line arguments.
+
+Command-line arguments take precedent over the JSON configuration, allowing you to override your default
+configuration at runtime:
+
+```bash
+lute -h
+Usage of lute:
+  -debug
+        Run Lute in debug mode.
+  -grpc int
+        The port that Lute should use for gRPC requests. (default 50051)
+  -host string
+        The hostname or address that the Lute backend should listen on. (default "127.0.0.1")
+  -http int
+        The port that Lute should use for HTTP requests. (default 8080)
+  -pg string
+        The hostname or address of the PostgreSQL database. (default "127.0.0.1")
+  -pg-port int
+        The port of the PostgreSQL database. (default 5432)
+
+lute -host 192.168.100.1 -http 80
+```
+
+The JSON configuration in `lute.config.json` sets the default values that Lute will startup with:
+
+```json
+{
+    "lute": {
+        "host": "127.0.0.1",
+        "grpc": 50051,
+        "http": 8080
+    },
+    "postgres": {
+        "host": "127.0.0.1",
+        "port": 5432
+    },
+    "uploads": "uploads/",
+    "debug": false
+}
+```
+todo: write up configuration definition
+
 ## Contributing
 
 ### API

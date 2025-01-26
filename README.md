@@ -46,7 +46,15 @@ The JSON configuration in `lute.config.json` sets the default values that Lute w
     "debug": false
 }
 ```
-todo: write up configuration definition
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| lute.host | The hostname or address that the Lute backend should listen on. | `"127.0.0.1"` |
+|lute.grpc | The port that Lute should use for gRPC requests. | `50051` |
+| lute.http | The port that Lute should use for HTTP requests. | `8080` |
+| postgres.host | The hostname or address of the PostgreSQL database. | `"127.0.0.1"` |
+| postgres.port | The port of the PostgreSQL database. | `5432` |
+| debug | Toggles debug mode. | `false` |
 
 ## Contributing
 

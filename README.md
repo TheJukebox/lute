@@ -57,7 +57,8 @@ The JSON configuration in `lute.config.json` sets the default values that Lute w
 | lute.http | The port that Lute should use for HTTP requests. | `8080` |
 | postgres.host | The hostname or address of the PostgreSQL database. | `"127.0.0.1"` |
 | postgres.port | The port of the PostgreSQL database. | `5432` |
-| debug | Toggles debug mode. | `false` |
+| debug | Toggles debug mode. **WARNING: This will log secrets!** | `false` |
+| uploads | The path that Lute should store uploaded files in. | `"uploads"` |
 
 ## Contributing
 

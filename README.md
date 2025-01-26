@@ -29,6 +29,7 @@ Usage of lute:
 lute -host 192.168.100.1 -http 80
 ```
 
+### JSON Configuration
 The JSON configuration in `lute.config.json` sets the default values that Lute will startup with:
 
 ```json
@@ -46,6 +47,8 @@ The JSON configuration in `lute.config.json` sets the default values that Lute w
     "debug": false
 }
 ```
+
+#### Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|

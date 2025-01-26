@@ -51,7 +51,9 @@ func main() {
 		Debug   bool   `json:"debug"`
 	}
 
-	config, err := os.ReadFile("lute.config.json")
+	configPath := flag.String("config", "lute.config.json", "A path to a Lute configuration in JSON format.")
+	flag.Parse()
+	config, err := os.ReadFile(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to parse config file: %v", err)
 	}

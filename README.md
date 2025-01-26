@@ -1,7 +1,10 @@
-# Lute
+<p align="center">
+      <img src="lute_logo.png">
+      <h1 align="center" style="color:#d5a021ff;font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;transform-origin: top right;text-shadow: 0px 0px 8px rgba(0, 0, 0, 256);">LUTE</h1>
+      <p align="center">Lute is a self-hosted streaming service, with a focus on concurrent listening,
+      implemented in <a href="https://go.dev">Go</a>.</p>
+</p>
 
-Lute is a self-hosted streaming service, with a focus on concurrent listening,
-implemented in [Go](https://go.dev/).
 
 ## Configuration
 

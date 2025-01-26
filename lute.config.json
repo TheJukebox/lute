@@ -1,0 +1,13 @@
+{
+    "lute": {
+        "host": "127.0.0.1",
+        "grpc": 50051,
+        "http": 8080
+    },
+    "postgres": {
+        "host": "127.0.0.1",
+        "port": 5432
+    },
+    "uploads": "uploads",
+    "debug": false
+}

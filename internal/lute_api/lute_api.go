@@ -22,10 +22,12 @@ var uploads = make(map[string]*uploadPb.UploadRequest)
 
 type StreamService struct {
 	streamPb.UnimplementedAudioStreamServer
+	Path string
 }
 
 type UploadService struct {
 	uploadPb.UnimplementedUploadServer
+	Path string
 }
 
 func (s *StreamService) StreamAudio(request *streamPb.AudioStreamRequest, stream streamPb.AudioStream_StreamAudioServer) error {
@@ -86,7 +88,7 @@ func (s *UploadService) StartUpload(_ context.Context, request *uploadPb.UploadR
 	uploads[file_id] = request
 	log.Printf("(%v) Received a request to begin upload!", file_id)
 
-	os.Create(fmt.Sprintf("uploads/raw/%v", request.GetFileName()))
+	os.Create(fmt.Sprintf("%v/raw/%v", s.Path, request.GetFileName()))
 
 	// Return a file ID, ready for chunks to be written
 	return &uploadPb.UploadResponse{
@@ -106,9 +108,9 @@ func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*
 	}
 
 	// create the paths for the file
-	filename := fmt.Sprintf("uploads/raw/%v", request.GetFileName())
+	filename := fmt.Sprintf("%v/raw/%v", s.Path, request.GetFileName())
 	output_path := strings.Split(request.GetFileName(), ".")[0] + ".aac"
-	output_path = fmt.Sprintf("uploads/converted/%v", output_path)
+	output_path = fmt.Sprintf("%v/converted/%v", s.Path, output_path)
 
 	// Open the file for writing
 	output, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0700)

@@ -1,0 +1,13 @@
+services:
+  backend:
+    image: "golang:1.23.3-alpine3.20"
+  frontend:
+    image: "node:22.12.0-alpine3.20"
+  database:
+    image: "postgres:17.2-alpine3.20"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lute
+    ports:
+      - 5432:5432

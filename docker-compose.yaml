@@ -3,6 +3,8 @@ services:
     image: "golang:1.23.3-alpine3.20"
     volumes:
       - .:/usr/src/lute
+    ports:
+      - 8080:8080
     entrypoint: /usr/src/lute/scripts/backend.sh
   frontend:
     image: "node:22.12.0-alpine3.20"

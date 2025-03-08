@@ -36,3 +36,6 @@ go.work.sum
 # python
 venv/
 */**/__pycache__
+
+# lute data
+uploads/

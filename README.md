@@ -5,6 +5,15 @@
       implemented in <a href="https://go.dev">Go</a>.</p>
 </p>
 
+## Quickstart
+
+You can use the `docker-compose.yaml` in this repo to quickly start up Lute:
+
+```sh
+docker compose up -d
+```
+
+Lute will then be available in your browser at `localhost:5173`! 
 
 ## Configuration
 

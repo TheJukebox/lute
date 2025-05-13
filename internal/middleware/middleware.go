@@ -49,6 +49,26 @@ func CorsMiddleware(next http.Handler) http.Handler {
 func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler, client streamPb.AudioStreamClient) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+            // handling the wire format
+            // https://protobuf.dev/programming-guides/encoding/
+            if r.Header.Get("Content-Type") == "application/lute-grpc" {
+                origin := r.Header.Get("Origin")
+                log.Printf("(%s) Parsing incoming stream request...", origin)
+                
+                // read the body
+                body, err := io.ReadAll(r.Body)
+                if err != nil {
+                    log.Printf("Failed to read request: %v", err)
+                    http.Error(w, "Failed to read request", http.StatusBadRequest)
+                    return
+                }
+
+                // log the body
+                log.Printf("body: %v", body)
+
+                // TODO: handle the wire format here
+
+            }
 			// Only operate on requests from grpc-web clients
 			if r.Header.Get("Content-Type") == "application/grpc-web-text" {
 				origin := r.Header.Get("Origin")

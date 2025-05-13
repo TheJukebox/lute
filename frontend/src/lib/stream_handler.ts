@@ -1,7 +1,8 @@
 import { currentTime, bufferedTime, isPlaying, isSeeking, buffering } from '$lib/audio_store';
-import { createClient } from '@connectrpc/connect';
-import { createConnectTransport } from "@connectrpc/connect-web"; 
-import { AudioStream } from '$lib/gen/stream_pb.ts';
+import type { AudioStreamRequest } from '$lib/gen/stream_pb';
+
+import { create, toBinary } from "@bufbuild/protobuf";
+import { AudioStreamRequestSchema } from '$lib/gen/ts/stream_pb';
 
 import type { ClientReadableStream } from 'grpc-web';
 import type { Unsubscriber } from 'svelte/store';
@@ -276,6 +277,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
         if (seeking) return;
         if (playing) playBuffer(sourceNode.buffer?.duration);
         else {
+    console.log(encodeBinary(AudioStreamRequestSchema, streamRequest));
             clearInterval(timeInterval);
             sourceNode.stop();
             sourceNode.disconnect();
@@ -345,12 +347,21 @@ export function resetStream(): void {
  * @param sessionId A session ID to associate with the stream.
  */
 export async function fetchStream(host: string, track: Track, sessionId: string): void {
-    const transport = createConnectTransport({
-        baseUrl: host,
-        useBinaryFormat: true,
+    const streamRequest = create(AudioStreamRequestSchema, {
+        fileName: track.path,
+        sessionId: sessionId,
     });
-    const client = createClient(AudioStream, transport);
-    const res = await client.streamAudio();
+    const binary = toBinary(AudioStreamRequestSchema, streamRequest);
+    console.log(binary);
+
+    const response = await fetch(`http://localhost:8080/streamAudio/StreamAudio`, {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/lute-grpc",
+        },
+        body: binary,
+    });
+    console.log(response);
 }
 
 /**

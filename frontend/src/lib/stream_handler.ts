@@ -1,5 +1,7 @@
-import '$lib/gen/stream_grpc_web_pb';
 import { currentTime, bufferedTime, isPlaying, isSeeking, buffering } from '$lib/audio_store';
+import { createClient } from '@connectrpc/connect';
+import { createConnectTransport } from "@connectrpc/connect-web"; 
+import { AudioStream } from '$lib/gen/stream_pb.ts';
 
 import type { ClientReadableStream } from 'grpc-web';
 import type { Unsubscriber } from 'svelte/store';
@@ -342,66 +344,13 @@ export function resetStream(): void {
  * @param track.path The path for the file to stream on the server.
  * @param sessionId A session ID to associate with the stream.
  */
-export function fetchStream(host: string, track: Track, sessionId: string): void {   
-    // reset stream state
-    resetStream();
-
-    // Open a connection to the server.
-    const service: proto.stream.AudioStreamClient = new proto.stream.AudioStreamClient(
-        host,
-        null,
-        {},
-    );
-
-    const request: proto.stream.AudioStreamRequest = new proto.stream.AudioStreamRequest();
-    request.setFileName(track.path);
-    request.setSessionId(sessionId);
-    trackDuration = track.duration;
-    
-    // request the stream
-    console.info(`(${host}) (${sessionId}) Requestion stream for '${track.path}'...`);
-    const audioStream: ClientReadableStream<proto.stream.AudioStreamChunk> = service.streamAudio(request, null);
-    let frameCount: number = 0;
-    bufferInterval = setInterval(bufferAudio, 1000);
-
-    // Handle frame buffering
-    audioStream.on('data', (response: proto.stream.AudioStreamChunk) => {
-        // @ts-ignore: this won't be a string
-        let chunk: Uint8Array = response.getData();
-        let seq: number = response.getSequence();
-
-        // Append the new chunk to the buffer of chunks.
-        chunk = concatArrays(chunkBuffer, chunk);
-
-        let ADTSindex: number = containsADTSHeader(chunk);
-        
-        // Slice the data just before the detected frame and add it to the previously detected one.
-        if (ADTSindex > 0 && workingFrame.length > 0) {
-            frameCount += 1;
-            workingFrame = concatArrays(workingFrame, chunk.slice(0, ADTSindex));
-            bufferFrame(workingFrame, seq);
-
-            workingFrame = chunk.slice(ADTSindex); // set the new frame
-        // The new frame is at the start, so we should have a complete frame already buffered.
-        } else if (ADTSindex === 0 && workingFrame.length > 0) {
-            frameCount += 1;
-            bufferFrame(workingFrame, seq);
-            workingFrame = chunk;
-        // The first frame.
-        } else if (ADTSindex === 0) {
-            workingFrame = chunk;
-        } else if (ADTSindex > 0) {
-            workingFrame = chunk.slice(ADTSindex);
-        // Finally, we should just throw it in the buffer if it hasn't been handled
-        } else {
-            chunkBuffer = concatArrays(chunkBuffer, chunk);
-        }
+export async function fetchStream(host: string, track: Track, sessionId: string): void {
+    const transport = createConnectTransport({
+        baseUrl: host,
+        useBinaryFormat: true,
     });
-
-    // event for connection closing
-    audioStream.on('end', async () => {
-        console.info(`(${host}) (${sessionId}) Stream complete.`);
-    });
+    const client = createClient(AudioStream, transport);
+    const res = await client.streamAudio();
 }
 
 /**

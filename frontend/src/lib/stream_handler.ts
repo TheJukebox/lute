@@ -362,6 +362,14 @@ export async function fetchStream(host: string, track: Track, sessionId: string)
         body: binary,
     });
     console.log(response);
+    const reader = response.body.getReader();
+    while(true) {
+        const { value, done } = await reader.read();
+        if (done) {
+            break;
+        }
+        console.log(value);
+    }
 }
 
 /**

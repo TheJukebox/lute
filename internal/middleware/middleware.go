@@ -66,8 +66,33 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler, client s
                 // log the body
                 log.Printf("body: %v", body)
 
-                // TODO: handle the wire format here
+                // unmarshal the data
+                var msg streamPb.AudioStreamRequest
+                err = proto.Unmarshal(body, &msg)
+                if err != nil {
+                    log.Printf("Failed to unmarshal request")
+                }
+                filename := msg.FileName
+                session_id := msg.SessionId
+				log.Printf("(%s) (%s) Requesting audio stream: %s", origin, session_id, filename)
 
+                stream, err := client.StreamAudio(context.Background(), &msg)
+                for {
+                    data , err := stream.Recv()
+                    if err == io.EOF {
+                        break
+                    }
+                    chunk := &streamPb.AudioStreamChunk{
+                        Data: data.GetData(),
+                        Sequence: data.GetSequence(),
+                    }
+                    encodedResponse, err := frameGrpcResponse(chunk)
+                    w.Write(encodedResponse)
+                    if flusher, ok := w.(http.Flusher); ok {
+                        flusher.Flush()
+                    }
+
+                }
             }
 			// Only operate on requests from grpc-web clients
 			if r.Header.Get("Content-Type") == "application/grpc-web-text" {

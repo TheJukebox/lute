@@ -54,6 +54,7 @@ let workingFrame: Uint8Array = new Uint8Array(0);
 /* Stream worker for multithreading */
 /* ==================== */
 let streamWorker: Worker;
+let dequeueFail: number = 0;
 if (typeof window !== 'undefined') {
     streamWorker = new Worker(new URL('$lib/stream_worker.ts', import.meta.url), {type: 'module'});
 
@@ -71,6 +72,7 @@ if (typeof window !== 'undefined') {
                 break;
             case 'dequeue_fail':
                 console.warn('Failed to dequeue a frame!');
+                dequeueFail += 1;
                 break;
             case 'empty':
                 console.debug('Frame queue has been emptied.');
@@ -196,6 +198,12 @@ export async function bufferAudio(): Promise<void> {
         clearInterval(buffTimeInterval);
         return;
     }
+    if (dequeueFail === 100) {
+        console.error("Failed to dequeue a new frame after 100 retries. Cancelling buffering!");
+        clearInterval(bufferInterval); 
+        clearInterval(buffTimeInterval);
+        return;
+    }
 
     // Use the stream worker to fetch more frames
     let msg: FrameMessage = {type: 'dequeue', frame: undefined};
@@ -219,8 +227,14 @@ export async function bufferAudio(): Promise<void> {
     }
 
     // decode the combined frames
-    let audio: AudioBuffer = await context.decodeAudioData(data.buffer as ArrayBuffer);
-    playbackBuffer = playbackBuffer ? concatAudioBuffers(playbackBuffer, audio) : audio;
+    try {
+        let audio: AudioBuffer = await context.decodeAudioData(data.buffer as ArrayBuffer);
+        playbackBuffer = playbackBuffer ? concatAudioBuffers(playbackBuffer, audio) : audio;
+    } catch (error) {
+        if (error instanceof DOMException) {
+            console.error("Failed to decode an audio buffer... discarding it.");
+        }
+    }
 }
 
 async function bufferReady(): Promise<void> {
@@ -296,11 +310,10 @@ async function playBuffer(offset: number = 0): Promise<void> {
 /**
  * Enqueues frames via the stream worker.
  * @function
- * @async
  * @param frame The frame to buffer.
  * @param seq The sequence ID for this frame.
  */
-async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
+function bufferFrames(frame: Uint8Array, seq: number): Promise<void> {
     let msg: FrameMessage = {type: 'queue', frame: {frame, seq}}; 
     streamWorker.postMessage(msg);
     console.log("Buffered a frame...");
@@ -390,7 +403,7 @@ export async function fetchStream(host: string, track: Track, sessionId: string)
         grpcBuffer = concatArrays(grpcBuffer, raw);
 
         let grpcLength = grpcFrameLength(grpcBuffer);
-        if (grpcLength < 1) continue;
+        if (grpcLength < 1 || grpcBuffer.length < 5 + grpcLength) continue;
 
         // add adts frame to the adts buffer and remove it from the grpc buffer
         let chunk = fromBinary(AudioStreamChunkSchema, stripGrpcFrame(grpcBuffer.slice(0, 5 + grpcLength)));
@@ -399,19 +412,16 @@ export async function fetchStream(host: string, track: Track, sessionId: string)
         adtsBuffer = concatArrays(adtsBuffer, chunk.data);
 
         // check for complete adts frames
-        let adtsLength = adtsFrameLength(adtsBuffer);
-        if (adtsLength < 1) continue;
-
-        // get an audio chunk
-        let audioChunk = adtsBuffer.slice(0, adtsLength);
-        adtsBuffer = adtsBuffer.slice(adtsLength, adtsBuffer.length);
-
-        (async () => {
-            console.log(audioChunk);
-            await bufferFrame(audioChunk, chunk.sequence);
-        })();
+        while (true) {
+            let adtsLength = adtsFrameLength(adtsBuffer);
+            if (adtsLength < 1 || adtsLength > adtsBuffer.length) break;
+            let audioChunk: Uint8Array = adtsBuffer.slice(0, adtsLength);
+            audioBuffer = concatArrays(audioBuffer, audioChunk);
+            adtsBuffer = adtsBuffer.slice(adtsLength);
+        }
+        bufferFrames(audioBuffer);
+        audioBuffer = new Uint8Array(0);
     }
-
 }
 
 export function grpcFrameLength(data: Uint8Array): number {
@@ -467,38 +477,13 @@ function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null 
     return combinedData;
 }
 
-// TODO: find the bug here that's causing frames to be mangled
 function adtsFrameLength(data: Uint8Array): number {
     if (data.length < 7) return -1;
-    for (let i = 0; i < data.length - 7; i++) {
-        // sync word - 12 bits
-        if (data[i] === 0xFF && (data[i + 1] & 0xF0 === 0xF0)) continue;
-        // MPEG Version - 2 bits
-        // 0 == MPEG-4 and 1 == MPEG-2
-        // layer - 1 bit
-        // always 0 for AAC
-        // protection_absent - 1 bit
-        // profile - 2 bits
-        if ((data[i + 2] & 0xC0) >> 6 !== 0x01) continue;
-        // sampling_frequency - 4 bits
-        if ((data[i + 2] & 0x3C) >> 2 !== 0x04) continue;
-        // privacy - 1 bit
-        // channel_configuration - 4 bits
-        if ((data[i + 2] & 0x01) !== 0x00 || (data[i + 3] & 0xE0) >> 5 !== 0x04) continue;
-        // originality - 1 bit
-        // home - 1 bit
-        // copyright - 2 bits 
-        // the frame length! - 13 bits
-        const length =
-            ((data[i + 3] & 0x03) << 11 |   // lower 2 bits of byte 3
-            (data[i + 4] << 3) |            // all 8 bits of byte 4
-            ((data[i + 5] & 0xE0) >> 5));    // the top 3 bits of byte 5
-        if (data.length >= length) {
-            return length;
-        } else {
-            return -1;
-        }
-    }
+    const length =
+        ((data[3] & 0x03) << 11 |   // lower 2 bits of byte 3
+        (data[4] << 3) |            // all 8 bits of byte 4
+        ((data[5] & 0xE0) >> 5));    // the top 3 bits of byte 5
+    return length >= 7 && length <= data.length ? length : -1;
 }
 
 /**

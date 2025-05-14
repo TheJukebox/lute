@@ -1,8 +1,10 @@
 import { currentTime, bufferedTime, isPlaying, isSeeking, buffering } from '$lib/audio_store';
 import type { AudioStreamRequest } from '$lib/gen/stream_pb';
 
-import { create, toBinary } from "@bufbuild/protobuf";
-import { AudioStreamRequestSchema } from '$lib/gen/ts/stream_pb';
+import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
+import { BinaryReader } from "@bufbuild/protobuf/wire";
+import { AudioStreamRequestSchema, AudioStreamChunkSchema } from '$lib/gen/stream_pb';
+import type { AudioStreamChunk } from '$lib/gen/stream_pb';
 
 import type { ClientReadableStream } from 'grpc-web';
 import type { Unsubscriber } from 'svelte/store';
@@ -347,12 +349,15 @@ export function resetStream(): void {
  * @param sessionId A session ID to associate with the stream.
  */
 export async function fetchStream(host: string, track: Track, sessionId: string): void {
+    resetStream();
+
+    // TODO: consider turning this into a client class or something
     const streamRequest = create(AudioStreamRequestSchema, {
         fileName: track.path,
         sessionId: sessionId,
     });
     const binary = toBinary(AudioStreamRequestSchema, streamRequest);
-    console.log(binary);
+    console.log(`Created stream request: ${binary}`);
 
     const response = await fetch(`http://localhost:8080/streamAudio/StreamAudio`, {
         method: 'POST',
@@ -361,15 +366,77 @@ export async function fetchStream(host: string, track: Track, sessionId: string)
         },
         body: binary,
     });
-    console.log(response);
+
+    console.log("Received response, starting stream...");
+    trackDuration = track.duration;
+    bufferInterval = setInterval(bufferAudio, 1000);
+
     const reader = response.body.getReader();
+    let grpcBuffer = new Uint8Array(0);
+    let adtsBuffer = new Uint8Array(0);
+    let audioBuffer = new Uint8Array(0);
+    
+    // gather chunks
     while(true) {
         const { value, done } = await reader.read();
-        if (done) {
+        if (done && grpcBuffer.length === 0) {
+            console.log("Stream finished!");
             break;
         }
-        console.log(value);
+
+        // add the chunk to the grpcBuffer
+        let raw = new Uint8Array(value);
+        grpcBuffer = concatArrays(grpcBuffer, raw);
+
+        let grpcLength = grpcFrameLength(grpcBuffer);
+        if (grpcLength < 1) continue;
+
+        // add adts frame to the adts buffer and remove it from the grpc buffer
+        let chunk = fromBinary(AudioStreamChunkSchema, stripGrpcFrame(grpcBuffer.slice(0, 5 + grpcLength)));
+        grpcBuffer = grpcBuffer.slice(5 + grpcLength);
+        adtsBuffer = concatArrays(adtsBuffer, chunk.data);
+
+        // check for complete adts frames
+        let adtsLength = adtsFrameLength(adtsBuffer);
+        if (adtsLength < 1) continue;
+
+        // get an audio chunk
+        let audioChunk = adtsBuffer.slice(0, adtsLength);
+        adtsBuffer = adtsBuffer.slice(0, adtsLength);
+
+        (async () => {
+            console.log(audioChunk);
+            await bufferFrame(audioChunk, chunk.sequence);
+        })();
     }
+
+}
+
+export function grpcFrameLength(data: Uint8Array): number {
+    if (data.length < 5) return -1; // too small to be complete
+    const length =
+        (data[1] << 24) | // the top byte into MSB
+        (data[2] << 16) | // the next MSB
+        (data[3] << 8)  | // and the next
+        data[4];          // this is the LSB
+    if (data.length >= 5 + length) {
+        return length;
+    } else {
+        return -1;
+    }
+}
+
+export function stripGrpcFrame(data: Uinut8Array): Uint8Array {
+    // create the length integer by bitshifting into
+    // a big-endian 32 bit integer
+    const length =
+        (data[1] << 24) | // the top byte into MSB
+        (data[2] << 16) | // the next MSB
+        (data[3] << 8)  | // and the next
+        data[4];          // this is the LSB
+
+    // return the contents
+    return data.slice(5, 5 + length);
 }
 
 /**
@@ -398,6 +465,39 @@ function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null 
     return combinedData;
 }
 
+
+function adtsFrameLength(data: Uint8Array): number {
+    if (data.length < 7) return -1;
+    for (let i = 0; i < data.length - 7; i++) {
+        // sync word - 12 bits
+        if (data[i] === 0xFF && (data[i + 1] & 0xF0 === 0xF0)) continue;
+        // MPEG Version - 2 bits
+        // 0 == MPEG-4 and 1 == MPEG-2
+        // layer - 1 bit
+        // always 0 for AAC
+        // protection_absent - 1 bit
+        // profile - 2 bits
+        if ((data[i + 2] & 0xC0) >> 6 !== 0x01) continue;
+        // sampling_frequency - 4 bits
+        if ((data[i + 2] & 0x3C) >> 2 !== 0x04) continue;
+        // privacy - 1 bit
+        // channel_configuration - 4 bits
+        if ((data[i + 2] & 0x01) !== 0x00 || (data[i + 3] & 0xE0) >> 5 !== 0x04) continue;
+        // originality - 1 bit
+        // home - 1 bit
+        // copyright - 2 bits 
+        // the frame length! - 13 bits
+        const length =
+            ((data[i + 3] & 0x03) << 11 |   // lower 2 bits of byte 3
+            (data[i + 4] << 3) |            // all 8 bits of byte 4
+            ((data[i + 5] & 0xE0) >> 5));    // the top 3 bits of byte 5
+        if (data.length >= length) {
+            return length;
+        } else {
+            return -1;
+        }
+    }
+}
 
 /**
  * Determines if the data in the array contains a valid ADTS header.
@@ -439,7 +539,7 @@ function containsADTSHeader(data: Uint8Array): number { // abaduser: potentially
             }
             // privacy bit - 1 bit
             // should always be 0
-            if ((data[i] + 2 & 0x02) >> 1 !== 0x00) {
+            if ((data[i + 2] & 0x02) >> 1 !== 0x00) {
                 continue;
             }
             // channel configuration - 4 bits 

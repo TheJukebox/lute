@@ -82,17 +82,43 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler, client s
                     if err == io.EOF {
                         break
                     }
+					if err != nil {
+						log.Printf("(%s) Couldn't finish stream: %q", origin, err)
+						http.Error(w, "Error sending stream chunk", http.StatusInternalServerError)
+						return
+					}
+
+                    // create the chunk
                     chunk := &streamPb.AudioStreamChunk{
                         Data: data.GetData(),
                         Sequence: data.GetSequence(),
                     }
+                    // encode the chunk into wire format
                     encodedResponse, err := frameGrpcResponse(chunk)
+					if err != nil {
+						log.Printf("(%s) Failed to frame data: %q", origin, err)
+						http.Error(w, "Failed to frame response", http.StatusInternalServerError)
+						return
+					}
+                    
+                    // TODO: make this output debug only
+                    log.Printf("(%s) Streaming chunk (%d bytes)...", origin, len(encodedResponse))
                     w.Write(encodedResponse)
+
+                    // push the chunk to the user
                     if flusher, ok := w.(http.Flusher); ok {
                         flusher.Flush()
                     }
-
                 }
+
+                // close stream
+				log.Printf("(%s) Sending gRPC trailers to client...", origin)
+				grpc.SendHeader(r.Context(), metadata.New(map[string]string{
+					"grpc-status":  "0",
+					"grpc-message": "OK",
+				}))
+				log.Printf("(%s) Stream complete!", origin)
+				return
             }
 			// Only operate on requests from grpc-web clients
 			if r.Header.Get("Content-Type") == "application/grpc-web-text" {
@@ -194,21 +220,21 @@ func frameGrpcResponse(data *streamPb.AudioStreamChunk) ([]byte, error) {
 		return nil, err
 	}
 
-	// Create a grpc-web-text compliant frame
+	// Create a wire compliant frame
 	frameLength := uint32(len(dataBytes)) // we have to add the length
 	var frameLengthBuffer bytes.Buffer
 	if err := binary.Write(&frameLengthBuffer, binary.BigEndian, frameLength); err != nil {
 		return nil, err
 	}
-	frame := []byte{0x00}                               // single empty byte for start of frame
+    frame := []byte{0x00}                               // compression flag
 	frame = append(frame, frameLengthBuffer.Bytes()...) // the length in big endian
 
 	// frame the data
 	// 0x00 | 0x00 0x00 0x00 0x00 | DATA
 	response := append(frame, dataBytes...)
 	// base64 encode the response
-	encodedResponse := make([]byte, base64.StdEncoding.EncodedLen(len(response)))
-	base64.StdEncoding.Encode(encodedResponse, response)
+	//encodedResponse := make([]byte, base64.StdEncoding.EncodedLen(len(response)))
+	//base64.StdEncoding.Encode(encodedResponse, response)
 
-	return encodedResponse, nil
+	return response, nil
 }

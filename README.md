@@ -131,4 +131,3 @@ npm install -g @bufbuild/buf @bufbuild/protoc-gen-es
 # and then generate the protocol buffers for the frontend
 npx buf generate
 ```
-

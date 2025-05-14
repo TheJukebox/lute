@@ -79,7 +79,7 @@ The JSON configuration in `lute.config.json` sets the default values that Lute w
 Lute makes use of [gRPC](https://grpc.io/docs/what-is-grpc/core-concepts/) and 
 [protocol buffers](https://protobuf.dev/) to implement its API. To contribute
 to the API, your development environment will require a protocol buffer compiler
-and Go-specific plugins for protocol buffers and gRPC.
+and Go and Typescript-specific plugins for protocol buffers and gRPC.
 
 You can [install `protoc`, a protocol buffer compiler](https://grpc.io/docs/protoc-installation/), 
 from pre-compiled binaries. Check the documentation for specific instructions 
@@ -101,12 +101,34 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```
 
-#### Compiling Protocol Buffers
+#### Compiling Protocol Buffers for the Backend
 
 You can compile protocol buffers in this project with `protoc`. Generally,
 `.proto` files will be found in the [`api/proto`](api/proto) directory.
 
 ```bash
-protoc --go_out=. --go_opt = paths =source_relative --go-grpc_out=. \
-    --go-grpc_opt = paths =source_relative api/proto
+# this will output the generated files to gen/
+protoc --go_out=gen --go_opt=paths=source_relative \ 
+    --go-grpc_out=gen --go-grpc_opt=paths=source_relative \
+    api/proto/* 
+
+# if you need to be more specific:
+protoc --go_out=gen/stream --go_opt=paths=source_relative \ 
+    --go-grpc_out=gen/stream --go-grpc_opt=paths=source_relative \
+    api/proto/stream.proto 
 ```
+
+#### Compiling Protocol Buffers for the Frontend
+
+You can compile protocol buffers for the frontend using [`buf.build`](https://buf.build/docs/). Generally,
+`.proto`files will be found in the [`api/proto`](api/proto) directory.
+
+
+```bash
+# you can install buf with npm
+npm install -g @bufbuild/buf @bufbuild/protoc-gen-es
+
+# and then generate the protocol buffers for the frontend
+npx buf generate
+```
+

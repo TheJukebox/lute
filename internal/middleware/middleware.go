@@ -102,7 +102,6 @@ func GrpcWebParseMiddleware(grpcServer *grpc.Server, next http.Handler, client s
 					}
                     
                     // TODO: make this output debug only
-                    log.Printf("(%s) Streaming chunk (%d bytes)...", origin, len(encodedResponse))
                     w.Write(encodedResponse)
 
                     // push the chunk to the user

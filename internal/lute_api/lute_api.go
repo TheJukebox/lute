@@ -13,6 +13,8 @@ import (
 	uploadPb "lute/gen/upload"
 	"lute/internal/convert"
 	apiErrors "lute/internal/lute_api/errors"
+	db "lute/internal/lute_db"
+	"lute/internal/lute_db/models"
 
 	"github.com/google/uuid"
 )
@@ -88,7 +90,7 @@ func (s *UploadService) StartUpload(_ context.Context, request *uploadPb.UploadR
 	uploads[file_id] = request
 	log.Printf("(%v) Received a request to begin upload!", file_id)
 
-	os.Create(fmt.Sprintf("%v/raw/%v", s.Path, request.GetFileName()))
+	os.Create(fmt.Sprintf("uploads/raw/%v",  request.GetFileName()))
 
 	// Return a file ID, ready for chunks to be written
 	return &uploadPb.UploadResponse{
@@ -96,6 +98,7 @@ func (s *UploadService) StartUpload(_ context.Context, request *uploadPb.UploadR
 	}, nil
 }
 
+// TODO: clean up failed uploads and handle duplicates
 func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*uploadPb.ChunkResponse, error) {
 	// Check an upload request was made first
 	file_id := chunk.GetFileId()
@@ -108,9 +111,9 @@ func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*
 	}
 
 	// create the paths for the file
-	filename := fmt.Sprintf("%v/raw/%v", s.Path, request.GetFileName())
+	filename := fmt.Sprintf("uploads/raw/%v", request.GetFileName())
 	output_path := strings.Split(request.GetFileName(), ".")[0] + ".aac"
-	output_path = fmt.Sprintf("%v/converted/%v", s.Path, output_path)
+	output_path = fmt.Sprintf("uploads/converted/%v", output_path)
 
 	// Open the file for writing
 	output, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0700)
@@ -137,6 +140,19 @@ func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*
 
 		// We're done working with this file, so delete it from the map
 		delete(uploads, request.GetFileName())
+
+        // add the track to the database
+        conn, err := db.DBConnPool.Acquire()
+        id, _ := uuid.NewUUID()
+        track := models.Track {
+            Id: id,
+            Path: output_path,
+            Name: "somename",
+            ArtistId: id,
+            AlbumId: id, 
+            Duration: 1,
+        }
+        db.CreateTrack(conn, track)
 	}
 
 	return &uploadPb.ChunkResponse{

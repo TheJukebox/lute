@@ -94,12 +94,12 @@ func main() {
 	}
 
 	log.Printf("Connecting to PostgreSQL at %v:%v...", dbConfig.Host, dbConfig.Port)
-	dbConnection, err := db.Connect(*dbConfig)
+	db.DBConnPool, err = db.Connect(*dbConfig)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	log.Print("Success!")
-	db.CreateTables(dbConnection)
+	db.CreateTables(db.DBConnPool)
 
 	// start gRPC server
 	log.Printf("Starting gRPC server on %s...", grpcAddr)

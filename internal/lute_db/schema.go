@@ -10,6 +10,9 @@ import (
 	"github.com/jackc/pgx"
 )
 
+var DBConnPool *pgx.ConnPool
+
+
 type PsqlConn struct {
 	Hostname string
 	Port     int

@@ -303,6 +303,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
 async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
     let msg: FrameMessage = {type: 'queue', frame: {frame, seq}}; 
     streamWorker.postMessage(msg);
+    console.log("Buffered a frame...");
 }
 
 /**
@@ -393,6 +394,7 @@ export async function fetchStream(host: string, track: Track, sessionId: string)
 
         // add adts frame to the adts buffer and remove it from the grpc buffer
         let chunk = fromBinary(AudioStreamChunkSchema, stripGrpcFrame(grpcBuffer.slice(0, 5 + grpcLength)));
+        console.log(chunk);
         grpcBuffer = grpcBuffer.slice(5 + grpcLength);
         adtsBuffer = concatArrays(adtsBuffer, chunk.data);
 
@@ -402,7 +404,7 @@ export async function fetchStream(host: string, track: Track, sessionId: string)
 
         // get an audio chunk
         let audioChunk = adtsBuffer.slice(0, adtsLength);
-        adtsBuffer = adtsBuffer.slice(0, adtsLength);
+        adtsBuffer = adtsBuffer.slice(adtsLength, adtsBuffer.length);
 
         (async () => {
             console.log(audioChunk);
@@ -465,7 +467,7 @@ function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null 
     return combinedData;
 }
 
-
+// TODO: find the bug here that's causing frames to be mangled
 function adtsFrameLength(data: Uint8Array): number {
     if (data.length < 7) return -1;
     for (let i = 0; i < data.length - 7; i++) {

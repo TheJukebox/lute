@@ -1,5 +1,10 @@
-import '$lib/gen/stream_grpc_web_pb';
 import { currentTime, bufferedTime, isPlaying, isSeeking, buffering } from '$lib/audio_store';
+import type { AudioStreamRequest } from '$lib/gen/stream_pb';
+
+import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
+import { BinaryReader } from "@bufbuild/protobuf/wire";
+import { AudioStreamRequestSchema, AudioStreamChunkSchema } from '$lib/gen/stream_pb';
+import type { AudioStreamChunk } from '$lib/gen/stream_pb';
 
 import type { ClientReadableStream } from 'grpc-web';
 import type { Unsubscriber } from 'svelte/store';
@@ -49,6 +54,7 @@ let workingFrame: Uint8Array = new Uint8Array(0);
 /* Stream worker for multithreading */
 /* ==================== */
 let streamWorker: Worker;
+let dequeueFail: number = 0;
 if (typeof window !== 'undefined') {
     streamWorker = new Worker(new URL('$lib/stream_worker.ts', import.meta.url), {type: 'module'});
 
@@ -66,6 +72,7 @@ if (typeof window !== 'undefined') {
                 break;
             case 'dequeue_fail':
                 console.warn('Failed to dequeue a frame!');
+                dequeueFail += 1;
                 break;
             case 'empty':
                 console.debug('Frame queue has been emptied.');
@@ -191,6 +198,12 @@ export async function bufferAudio(): Promise<void> {
         clearInterval(buffTimeInterval);
         return;
     }
+    if (dequeueFail === 100) {
+        console.error("Failed to dequeue a new frame after 100 retries. Cancelling buffering!");
+        clearInterval(bufferInterval); 
+        clearInterval(buffTimeInterval);
+        return;
+    }
 
     // Use the stream worker to fetch more frames
     let msg: FrameMessage = {type: 'dequeue', frame: undefined};
@@ -214,8 +227,14 @@ export async function bufferAudio(): Promise<void> {
     }
 
     // decode the combined frames
-    let audio: AudioBuffer = await context.decodeAudioData(data.buffer as ArrayBuffer);
-    playbackBuffer = playbackBuffer ? concatAudioBuffers(playbackBuffer, audio) : audio;
+    try {
+        let audio: AudioBuffer = await context.decodeAudioData(data.buffer as ArrayBuffer);
+        playbackBuffer = playbackBuffer ? concatAudioBuffers(playbackBuffer, audio) : audio;
+    } catch (error) {
+        if (error instanceof DOMException) {
+            console.error("Failed to decode an audio buffer... discarding it.");
+        }
+    }
 }
 
 async function bufferReady(): Promise<void> {
@@ -274,6 +293,7 @@ async function playBuffer(offset: number = 0): Promise<void> {
         if (seeking) return;
         if (playing) playBuffer(sourceNode.buffer?.duration);
         else {
+    console.log(encodeBinary(AudioStreamRequestSchema, streamRequest));
             clearInterval(timeInterval);
             sourceNode.stop();
             sourceNode.disconnect();
@@ -290,13 +310,13 @@ async function playBuffer(offset: number = 0): Promise<void> {
 /**
  * Enqueues frames via the stream worker.
  * @function
- * @async
  * @param frame The frame to buffer.
  * @param seq The sequence ID for this frame.
  */
-async function bufferFrame(frame: Uint8Array, seq: number): Promise<void> {
+function bufferFrames(frame: Uint8Array, seq: number): Promise<void> {
     let msg: FrameMessage = {type: 'queue', frame: {frame, seq}}; 
     streamWorker.postMessage(msg);
+    console.log("Buffered a frame...");
 }
 
 /**
@@ -342,66 +362,93 @@ export function resetStream(): void {
  * @param track.path The path for the file to stream on the server.
  * @param sessionId A session ID to associate with the stream.
  */
-export function fetchStream(host: string, track: Track, sessionId: string): void {   
-    // reset stream state
+export async function fetchStream(host: string, track: Track, sessionId: string): void {
     resetStream();
 
-    // Open a connection to the server.
-    const service: proto.stream.AudioStreamClient = new proto.stream.AudioStreamClient(
-        host,
-        null,
-        {},
-    );
+    // TODO: consider turning this into a client class or something
+    const streamRequest = create(AudioStreamRequestSchema, {
+        fileName: track.path,
+        sessionId: sessionId,
+    });
+    const binary = toBinary(AudioStreamRequestSchema, streamRequest);
+    console.log(`Created stream request: ${binary}`);
 
-    const request: proto.stream.AudioStreamRequest = new proto.stream.AudioStreamRequest();
-    request.setFileName(track.path);
-    request.setSessionId(sessionId);
+    const response = await fetch(`http://localhost:8080/streamAudio/StreamAudio`, {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/lute-grpc",
+        },
+        body: binary,
+    });
+
+    console.log("Received response, starting stream...");
     trackDuration = track.duration;
-    
-    // request the stream
-    console.info(`(${host}) (${sessionId}) Requestion stream for '${track.path}'...`);
-    const audioStream: ClientReadableStream<proto.stream.AudioStreamChunk> = service.streamAudio(request, null);
-    let frameCount: number = 0;
     bufferInterval = setInterval(bufferAudio, 1000);
 
-    // Handle frame buffering
-    audioStream.on('data', (response: proto.stream.AudioStreamChunk) => {
-        // @ts-ignore: this won't be a string
-        let chunk: Uint8Array = response.getData();
-        let seq: number = response.getSequence();
-
-        // Append the new chunk to the buffer of chunks.
-        chunk = concatArrays(chunkBuffer, chunk);
-
-        let ADTSindex: number = containsADTSHeader(chunk);
-        
-        // Slice the data just before the detected frame and add it to the previously detected one.
-        if (ADTSindex > 0 && workingFrame.length > 0) {
-            frameCount += 1;
-            workingFrame = concatArrays(workingFrame, chunk.slice(0, ADTSindex));
-            bufferFrame(workingFrame, seq);
-
-            workingFrame = chunk.slice(ADTSindex); // set the new frame
-        // The new frame is at the start, so we should have a complete frame already buffered.
-        } else if (ADTSindex === 0 && workingFrame.length > 0) {
-            frameCount += 1;
-            bufferFrame(workingFrame, seq);
-            workingFrame = chunk;
-        // The first frame.
-        } else if (ADTSindex === 0) {
-            workingFrame = chunk;
-        } else if (ADTSindex > 0) {
-            workingFrame = chunk.slice(ADTSindex);
-        // Finally, we should just throw it in the buffer if it hasn't been handled
-        } else {
-            chunkBuffer = concatArrays(chunkBuffer, chunk);
+    const reader = response.body.getReader();
+    let grpcBuffer = new Uint8Array(0);
+    let adtsBuffer = new Uint8Array(0);
+    let audioBuffer = new Uint8Array(0);
+    
+    // gather chunks
+    while(true) {
+        const { value, done } = await reader.read();
+        if (done && grpcBuffer.length === 0) {
+            console.log("Stream finished!");
+            break;
         }
-    });
 
-    // event for connection closing
-    audioStream.on('end', async () => {
-        console.info(`(${host}) (${sessionId}) Stream complete.`);
-    });
+        // add the chunk to the grpcBuffer
+        let raw = new Uint8Array(value);
+        grpcBuffer = concatArrays(grpcBuffer, raw);
+
+        let grpcLength = grpcFrameLength(grpcBuffer);
+        if (grpcLength < 1 || grpcBuffer.length < 5 + grpcLength) continue;
+
+        // add adts frame to the adts buffer and remove it from the grpc buffer
+        let chunk = fromBinary(AudioStreamChunkSchema, stripGrpcFrame(grpcBuffer.slice(0, 5 + grpcLength)));
+        console.log(chunk);
+        grpcBuffer = grpcBuffer.slice(5 + grpcLength);
+        adtsBuffer = concatArrays(adtsBuffer, chunk.data);
+
+        // check for complete adts frames
+        while (true) {
+            let adtsLength = adtsFrameLength(adtsBuffer);
+            if (adtsLength < 1 || adtsLength > adtsBuffer.length) break;
+            let audioChunk: Uint8Array = adtsBuffer.slice(0, adtsLength);
+            audioBuffer = concatArrays(audioBuffer, audioChunk);
+            adtsBuffer = adtsBuffer.slice(adtsLength);
+        }
+        bufferFrames(audioBuffer);
+        audioBuffer = new Uint8Array(0);
+    }
+}
+
+export function grpcFrameLength(data: Uint8Array): number {
+    if (data.length < 5) return -1; // too small to be complete
+    const length =
+        (data[1] << 24) | // the top byte into MSB
+        (data[2] << 16) | // the next MSB
+        (data[3] << 8)  | // and the next
+        data[4];          // this is the LSB
+    if (data.length >= 5 + length) {
+        return length;
+    } else {
+        return -1;
+    }
+}
+
+export function stripGrpcFrame(data: Uinut8Array): Uint8Array {
+    // create the length integer by bitshifting into
+    // a big-endian 32 bit integer
+    const length =
+        (data[1] << 24) | // the top byte into MSB
+        (data[2] << 16) | // the next MSB
+        (data[3] << 8)  | // and the next
+        data[4];          // this is the LSB
+
+    // return the contents
+    return data.slice(5, 5 + length);
 }
 
 /**
@@ -430,6 +477,14 @@ function concatAudioBuffers(x: AudioBuffer, y: AudioBuffer): AudioBuffer | null 
     return combinedData;
 }
 
+function adtsFrameLength(data: Uint8Array): number {
+    if (data.length < 7) return -1;
+    const length =
+        ((data[3] & 0x03) << 11 |   // lower 2 bits of byte 3
+        (data[4] << 3) |            // all 8 bits of byte 4
+        ((data[5] & 0xE0) >> 5));    // the top 3 bits of byte 5
+    return length >= 7 && length <= data.length ? length : -1;
+}
 
 /**
  * Determines if the data in the array contains a valid ADTS header.
@@ -471,7 +526,7 @@ function containsADTSHeader(data: Uint8Array): number { // abaduser: potentially
             }
             // privacy bit - 1 bit
             // should always be 0
-            if ((data[i] + 2 & 0x02) >> 1 !== 0x00) {
+            if ((data[i + 2] & 0x02) >> 1 !== 0x00) {
                 continue;
             }
             // channel configuration - 4 bits 

@@ -19,6 +19,12 @@
 				<span>Your Library</span>
 			</li>
 		</a>
+        <a href='/upload'>
+			<li>
+                <img src='./assets/upload.svg' alt='Upload New Tracks'/>
+				<span>Upload</span>
+			</li>
+		</a>
 	</ul>
 </div>
 

@@ -1,14 +1,17 @@
 package lute_api
 
 import (
+	"container/list"
 	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	libraryPb "lute/gen/library"
 	streamPb "lute/gen/stream"
 	uploadPb "lute/gen/upload"
 	"lute/internal/convert"
@@ -30,6 +33,14 @@ type StreamService struct {
 type UploadService struct {
 	uploadPb.UnimplementedUploadServer
 	Path string
+}
+
+type LibraryService struct {
+    libraryPb.UnimplementedLibraryServer
+    Id string,
+    Name string,
+    ArtistId string,
+    AlbumId string,
 }
 
 func (s *StreamService) StreamAudio(request *streamPb.AudioStreamRequest, stream streamPb.AudioStream_StreamAudioServer) error {
@@ -61,7 +72,7 @@ func (s *StreamService) StreamAudio(request *streamPb.AudioStreamRequest, stream
 }
 
 func forbiddenChars(s string) (bool, error) {
-	r, err := regexp.Compile("^[a-zA-Z0-9._-]+$")
+	r, err := regexp.Compile("^[a-zA-Z0-9._\\- ]+$")
 	if err != nil {
 		return false, err
 	}
@@ -112,6 +123,8 @@ func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*
 
 	// create the paths for the file
 	filename := fmt.Sprintf("uploads/raw/%v", request.GetFileName())
+    basename := filepath.Base(filename)
+    basename = strings.TrimSuffix(basename, filepath.Ext(basename))
 	output_path := strings.Split(request.GetFileName(), ".")[0] + ".aac"
 	output_path = fmt.Sprintf("uploads/converted/%v", output_path)
 
@@ -147,16 +160,24 @@ func (s *UploadService) UploadChunk(_ context.Context, chunk *uploadPb.Chunk) (*
         track := models.Track {
             Id: id,
             Path: output_path,
-            Name: "somename",
+            Name: basename,
             ArtistId: id,
             AlbumId: id, 
             Duration: 1,
         }
-        db.CreateTrack(conn, track)
+        err := db.CreateTrack(conn, track)
+        if err != nil {
+            return nil, err
+        }
 	}
 
 	return &uploadPb.ChunkResponse{
 		Success: true,
 		Message: "Received chunk!",
 	}, nil
+}
+
+func (s *LibraryService) GetTrack(query *libraryPb.TrackQuery, stream libraryPb.Library_GetTrackServer) (list, error) {
+   log.Printf("Not implemented") 
+   return nil, nil
 }

@@ -1,10 +1,12 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { getAudioContext } from '$lib/stream';
 
     let ws: WebSocket;
     let status: string = 'Disconnected';
 
     onMount(() => {
+        audioContext = getAudioContext()
         ws = new WebSocket('ws://localhost:7001/ws');
 
         ws.onopen = () => {
@@ -12,7 +14,8 @@
         };
 
         ws.onmessage = (e) => {
-            status = `Message received: ${e.data}`;
+            const message: string = e.data;
+            status = `Message received: ${message}`;
         };
 
         ws.onclose = (e) => {
@@ -38,5 +41,5 @@
     aria-label="doit"
     class="p-2 text-xl border rounded-full"
 >
-    DO IT
+    TEST
 </button>

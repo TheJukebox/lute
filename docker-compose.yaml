@@ -22,7 +22,7 @@ services:
     image: lute-frontend:latest
     build: frontend/
     ports:
-      - "5173:5173"
+      - "3000:3000"
     depends_on:
       - backend
 

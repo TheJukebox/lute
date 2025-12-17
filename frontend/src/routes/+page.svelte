@@ -6,26 +6,43 @@
     let status: string = 'Disconnected';
 
     onMount(() => {
-        audioContext = getAudioContext()
-        ws = new WebSocket('ws://localhost:7001/ws');
+        let audioContext = getAudioContext()
+        let stream: Uint8Array[] = []
+        ws = new WebSocket('ws://172.31.204.147:7001/stream');
 
         ws.onopen = () => {
             status = 'Connected';
         };
 
-        ws.onmessage = (e) => {
-            const message: string = e.data;
-            status = `Message received: ${message}`;
+        ws.onmessage = async (e) => {
+            stream.push(new Uint8Array(await e.data.arrayBuffer())); 
         };
 
-        ws.onclose = (e) => {
+        ws.onclose = async (e) => {
             status = `Disconnected: ${e}`;
+            console.log(stream);
+            let out: Uint8Array = new Uint8Array(0);
+            for (const buf of stream) {
+                let tmp = new Uint8Array(out.byteLength + buf.byteLength);
+                tmp.set(out, 0);
+                tmp.set(buf, out.byteLength);
+                out = tmp; 
+            }
+            console.log(out);
+            let audio: AudioBuffer = audioContext?.decodeAudioData(out.buffer as ArrayBuffer)
+            console.log(audio);
+            const source = audioContext?.createBufferSource();
+            source.buffer = await audio;
+            source.connect(audioContext?.destination);
+            source.start();
         };
 
         ws.onerror = (e) => {
             status = `Error: ${e}`;
         };
 
+        const play = () => audioContext?.state === 'suspended' && audioContext?.resume();
+        document.addEventListener('click', play, {once: true});
     });
 
     const sendMessage = () => {

@@ -41,6 +41,7 @@ func main() {
     
     http.HandleFunc("/hello", hello)
     http.HandleFunc("/ws", stream.WebsocketHandler)
+    http.HandleFunc("/stream", stream.AudioStream)
 
     log.Printf("Starting server...")
     server := &http.Server{

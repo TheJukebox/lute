@@ -28,10 +28,23 @@ func Connect(
     return err
 }
 
+var mimeToExtension = map[string]string {
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/ogg": ".ogg",
+    "audio/flac": ".flac",
+    "audio/wav": ".wav",
+}
+
 type UploadRequest struct {
     Name string `json:"name"`
     UriName string `json:"uriName"`
     ContentType string `json:"contentType"`
+}
+
+type PresignedUploadResponse struct {
+    URL string `json:"url"`
+    Fields map[string]string `json:"fields"`
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -44,23 +57,37 @@ func Upload(w http.ResponseWriter, r *http.Request) {
         var body UploadRequest
         err = json.NewDecoder(r.Body).Decode(&body)
         if err != nil || body.Name == "" || body.UriName == "" || body.ContentType == "" {
-            w.Header().Set("Content-Type", "text/plain")
-            w.WriteHeader(http.StatusBadRequest)
-            w.Write([]byte("name, uriName, and contentType must be specified."))
+            http.Error(w, "name, uriName, and contentType must be specified.", http.StatusBadRequest)
             return
         }
 
+
+        ext, _ := mimeToExtension[body.ContentType]
+        filename := body.UriName + ext 
         expiry := 10 * time.Minute
-        presignedURL, err := MinioClient.PresignedPutObject(context.Background(), "lute-audio", body.UriName, expiry)
+
+        policy := minio.NewPostPolicy()
+        policy.SetBucket("lute-audio")
+        policy.SetKey(filename)
+        policy.SetExpires(time.Now().UTC().Add(expiry))
+        policy.SetContentType(body.ContentType)
+        policy.SetUserMetadata("name", body.Name)
+
+        presignedURL, formData, err := MinioClient.PresignedPostPolicy(context.Background(), policy)
         if err != nil {
             log.Printf("[%v] Failed to generate a presigned URL: %v", r.RemoteAddr, err)
-            w.Header().Set("Content-Type", "text/plain")
-            w.WriteHeader(http.StatusInternalServerError)
-            w.Write([]byte("The server failed to generate a presigned URL."))
+            http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
             return
         }
-        w.Header().Set("Content-Type", "text/plain")
+        response := PresignedUploadResponse {
+            URL: presignedURL.String(),
+            Fields: formData,
+        }
+        w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusOK)
-        w.Write([]byte(presignedURL.String()))
+        if err = json.NewEncoder(w).Encode(response); err != nil {
+            http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
+            return
+        }
     }
 }

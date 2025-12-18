@@ -30,7 +30,7 @@
                 const uriName: string = encodeURIComponent(name);
                 const contentType: string = file.type;
                 const response: Response = await fetch(
-                    "http://172.31.204.147:7001/upload",
+                    "http://localhost:7001/upload",
                     {
                         method: "POST",
                         headers: {
@@ -50,7 +50,7 @@
                 }
                 formData.append("file", file);
                 const uploadResponse: Response = await fetch(
-                    data.url, 
+                    "http://localhost:9000/lute-audio", 
                     {
                         method: "POST",
                         body: formData,

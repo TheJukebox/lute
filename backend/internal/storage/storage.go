@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -45,6 +46,10 @@ type UploadRequest struct {
 type PresignedUploadResponse struct {
     URL string `json:"url"`
     Fields map[string]string `json:"fields"`
+}
+
+type TracksResponse struct {
+	Tracks []Track `json:"tracks"`
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -100,5 +105,31 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
             return
         }
+
+		track := Track {
+			Name: body.Name,
+			UriName: body.UriName,
+			Path: fmt.Sprintf("lute-audio/%s", body.UriName + ext),
+		}
+		track.Create()
     }
+}
+
+func Tracks(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		tracks, err := AllTracks()	
+		if err != nil {
+			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+			return
+		}
+		response := TracksResponse {
+			Tracks: tracks,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+			return
+		}
+	}
 }

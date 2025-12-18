@@ -10,7 +10,7 @@
     const buffer: StreamBuffer = new StreamBuffer();
 
     onMount(() => {
-        ws = new WebSocket('ws://172.31.204.147:7001/stream?track=02%20(Interlude%201).mp3');
+        ws = new WebSocket('ws://localhost:7001/stream?track=NECROPOLITE.mp3');
 
         ws.onopen = () => {
             status = 'Connected';
@@ -38,6 +38,11 @@
 
     const sendMessage = () => {
        ws.send("Test"); 
+    };
+
+    const fetchTracks = async () => {
+        const response = await fetch("http://localhost:7001/tracks");
+        console.log(response.data);
     };
 
     const play = async () => {
@@ -76,6 +81,14 @@
             >
                 Send message to websocket
             </button>
+            <button
+                onclick={fetchTracks}
+                aria-label="fetch-tracks"
+                class="p-2 text-xl border rounded-full hover:bg-blue-100 active:scale-[0.95] transition shadow cursor-pointer"
+            >
+               Fetch Tracks 
+            </button>
+
 
             <button
                 aria-label="play"

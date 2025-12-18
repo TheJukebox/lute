@@ -75,7 +75,6 @@ func AudioStream(w http.ResponseWriter, r *http.Request) {
             conn.Close()
             return
     }
-    defer file.Close()
     streamBuffer := make([]byte, 8192*5)
     sequence := 0
     for {

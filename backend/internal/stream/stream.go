@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -9,6 +10,12 @@ import (
 
 	"github.com/gorilla/websocket"
 )
+
+type StreamChunk struct {
+    Size int
+    Data []byte
+    Sequence int
+}
 
 var upgrader = websocket.Upgrader {
     ReadBufferSize: 1024,
@@ -65,6 +72,7 @@ func AudioStream(w http.ResponseWriter, r *http.Request) {
     }
     defer file.Close()
     streamBuffer := make([]byte, 8192*5)
+    sequence := 0
     for {
         chunkSize, err := file.Read(streamBuffer)
         if err == io.EOF {
@@ -81,6 +89,20 @@ func AudioStream(w http.ResponseWriter, r *http.Request) {
             conn.Close()
             return
         }
-        conn.WriteMessage(websocket.BinaryMessage, streamBuffer[:chunkSize])
+        chunk := StreamChunk{
+            Size: chunkSize,
+            Data: streamBuffer[:chunkSize],
+            Sequence: sequence,
+        }
+        message, err := json.Marshal(&chunk)
+        if err != nil {
+            log.Printf("[%v] Failed to marshal chunk: %v", conn.RemoteAddr(), err)
+            conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Failed to chunk stream."))
+            time.Sleep(10 * time.Second)
+            conn.Close()
+            return
+        }
+        conn.WriteMessage(websocket.BinaryMessage, message)
+        sequence++
     }
 }

@@ -1,13 +1,16 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { getAudioContext } from '$lib/stream';
+    import { type StreamChunk, StreamBuffer } from '$lib/stream';
 
     let ws: WebSocket;
     let status: string = 'Disconnected';
 
     onMount(() => {
-        let audioContext = getAudioContext()
-        let stream: Uint8Array[] = []
+        const audioContext = getAudioContext();
+        let stream: Uint8Array[] = [];
+        const buffer: StreamBuffer = new StreamBuffer();
+        let go: boolean = true;
         ws = new WebSocket('ws://172.31.204.147:7001/stream');
 
         ws.onopen = () => {
@@ -15,24 +18,30 @@
         };
 
         ws.onmessage = async (e) => {
-            stream.push(new Uint8Array(await e.data.arrayBuffer())); 
+            const data: StreamChunk = JSON.parse(await e.data.text())
+            buffer.push(data);
         };
 
         ws.onclose = async (e) => {
             status = `Disconnected: ${e}`;
-            console.log(stream);
-            let out: Uint8Array = new Uint8Array(0);
-            for (const buf of stream) {
-                let tmp = new Uint8Array(out.byteLength + buf.byteLength);
-                tmp.set(out, 0);
-                tmp.set(buf, out.byteLength);
-                out = tmp; 
+            console.log(buffer);
+            let playable: Uint8Array = new Uint8Array(0);
+            while (true) {
+                const chunk: StreamChunk | undefined = buffer.next();
+                console.debug(`Adding chunk ${chunk?.Sequence} to buffer!`);
+                if (chunk === undefined) {
+                    break;
+                }
+                const data: Uint8Array = Uint8Array.from(atob(chunk.Data), c => c.charCodeAt(0));
+                let temp = new Uint8Array(playable.byteLength + data.byteLength);
+                temp.set(playable, 0);
+                temp.set(data, playable.byteLength);
+                playable = temp;
             }
-            console.log(out);
-            let audio: AudioBuffer = audioContext?.decodeAudioData(out.buffer as ArrayBuffer)
-            console.log(audio);
+            console.log(playable);
+            const audio: AudioBuffer = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
             const source = audioContext?.createBufferSource();
-            source.buffer = await audio;
+            source.buffer = audio;
             source.connect(audioContext?.destination);
             source.start();
         };
@@ -41,7 +50,9 @@
             status = `Error: ${e}`;
         };
 
-        const play = () => audioContext?.state === 'suspended' && audioContext?.resume();
+        const play = async () => {
+            audioContext?.state === 'suspended' && audioContext?.resume();
+        }
         document.addEventListener('click', play, {once: true});
     });
 

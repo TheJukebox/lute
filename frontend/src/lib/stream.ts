@@ -31,7 +31,7 @@ export class StreamBuffer {
         this.chunks.sort((a, b) => a.Sequence - b.Sequence);
     }
 
-    pop() {
+    next() {
         return this.chunks.shift()
     }
 }

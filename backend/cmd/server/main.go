@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"lute/internal/stream"
 	"net/http"
 	"os"
 
@@ -18,7 +19,6 @@ type ServerConfig struct {
 
 func hello(w http.ResponseWriter, req *http.Request) {
     log.Printf("Received request from: %v", req.RemoteAddr)
-    fmt.Fprintf(w, "hello\n")
 }
 
 func main() {
@@ -40,6 +40,8 @@ func main() {
     }
     
     http.HandleFunc("/hello", hello)
+    http.HandleFunc("/ws", stream.WebsocketHandler)
+    http.HandleFunc("/stream", stream.AudioStream)
 
     log.Printf("Starting server...")
     server := &http.Server{

@@ -10,7 +10,7 @@
     const buffer: StreamBuffer = new StreamBuffer();
 
     onMount(() => {
-        ws = new WebSocket('ws://172.31.204.147:7001/stream');
+        ws = new WebSocket('ws://172.31.204.147:7001/stream?track=02%20(Interlude%201).mp3');
 
         ws.onopen = () => {
             status = 'Connected';

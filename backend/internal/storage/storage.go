@@ -48,6 +48,15 @@ type PresignedUploadResponse struct {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
+    if r.Method == http.MethodOptions {
+        log.Println("Handling CORS...")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+        w.WriteHeader(http.StatusNoContent)
+        return
+    }
+
     log.Printf("[%v] Received upload request.", r.RemoteAddr)
     if r.Method == http.MethodPost {
         err := r.ParseForm()
@@ -83,6 +92,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             URL: presignedURL.String(),
             Fields: formData,
         }
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
         w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusOK)
         if err = json.NewEncoder(w).Encode(response); err != nil {

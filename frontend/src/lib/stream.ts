@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 
-let audioContext: AudioContext;
+export let audioContext: AudioContext;
 
 export interface StreamChunk {
     ChunkSize: number;
@@ -14,7 +14,6 @@ export function getAudioContext() {
     if (!audioContext) {
         audioContext = new AudioContext();
     }
-    return audioContext;
 }
 
 export class StreamBuffer {

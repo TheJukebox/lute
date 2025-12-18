@@ -1,16 +1,13 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { getAudioContext } from '$lib/stream';
+    import { getAudioContext, audioContext } from '$lib/stream';
     import { type StreamChunk, StreamBuffer } from '$lib/stream';
 
     let ws: WebSocket;
     let status: string = 'Disconnected';
+    const buffer: StreamBuffer = new StreamBuffer();
 
     onMount(() => {
-        const audioContext = getAudioContext();
-        let stream: Uint8Array[] = [];
-        const buffer: StreamBuffer = new StreamBuffer();
-        let go: boolean = true;
         ws = new WebSocket('ws://172.31.204.147:7001/stream');
 
         ws.onopen = () => {
@@ -25,25 +22,6 @@
         ws.onclose = async (e) => {
             status = `Disconnected: ${e}`;
             console.log(buffer);
-            let playable: Uint8Array = new Uint8Array(0);
-            while (true) {
-                const chunk: StreamChunk | undefined = buffer.next();
-                console.debug(`Adding chunk ${chunk?.Sequence} to buffer!`);
-                if (chunk === undefined) {
-                    break;
-                }
-                const data: Uint8Array = Uint8Array.from(atob(chunk.Data), c => c.charCodeAt(0));
-                let temp = new Uint8Array(playable.byteLength + data.byteLength);
-                temp.set(playable, 0);
-                temp.set(data, playable.byteLength);
-                playable = temp;
-            }
-            console.log(playable);
-            const audio: AudioBuffer = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
-            const source = audioContext?.createBufferSource();
-            source.buffer = audio;
-            source.connect(audioContext?.destination);
-            source.start();
         };
 
         ws.onerror = (e) => {
@@ -53,21 +31,58 @@
         const play = async () => {
             audioContext?.state === 'suspended' && audioContext?.resume();
         }
-        document.addEventListener('click', play, {once: true});
+        document.getElementById("play")?.addEventListener('click', play, {once: true});
     });
 
     const sendMessage = () => {
        ws.send("Test"); 
     };
-</script>
 
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
-<p>Websocket status: {status}</p>
-<button
-    onclick={sendMessage}
-    aria-label="doit"
-    class="p-2 text-xl border rounded-full"
->
-    TEST
-</button>
+    const play = async () => {
+        getAudioContext();
+        audioContext?.state === 'suspended' && audioContext?.resume();
+        let playable: Uint8Array = new Uint8Array(0);
+        while (true) {
+            const chunk: StreamChunk | undefined = buffer.next();
+            if (chunk === undefined) {
+                break;
+            }
+            const data: Uint8Array = Uint8Array.from(atob(chunk.Data), c => c.charCodeAt(0));
+            let temp = new Uint8Array(playable.byteLength + data.byteLength);
+            temp.set(playable, 0);
+            temp.set(data, playable.byteLength);
+            playable = temp;
+        }
+        console.log(playable);
+        const audio: AudioBuffer = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
+        const source = audioContext?.createBufferSource();
+        source.buffer = audio;
+        source.connect(audioContext?.destination);
+        source.start();
+    }
+</script>
+<main>
+    <div class="p-4">
+        <h1 class="text-xl font-bold">Welcome to SvelteKit</h1>
+        <p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+        <p>Websocket status: {status}</p>
+
+            <div class="p-4 flex flex-col max-w-48 gap-4">
+                <button
+                    onclick={sendMessage}
+                    aria-label="send-message"
+                    class="p-2 text-xl border rounded-full hover:bg-blue-100 active:scale-[0.95] transition shadow-xl cursor-pointer"
+                >
+                    Send message to websocket
+                </button>
+
+                <button
+                    aria-label="play"
+                    onclick={play}
+                    class="p-2 text-xl border rounded-full hover:bg-blue-100 active:scale-[0.95] transition shadow-xl cursor-pointer"
+                >
+                    PLAY
+                </button>
+            </div>
+    </div>
+</main>

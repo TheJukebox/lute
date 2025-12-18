@@ -8,6 +8,13 @@ services:
     ports:
       - "5432:5432"
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
   backend:
     image: lute-backend:latest
     build: backend/
@@ -17,6 +24,7 @@ services:
       - "7001:7001"
     depends_on:
       - postgres
+      - minio
 
   frontend:
     image: lute-frontend:latest

@@ -1,14 +1,16 @@
 package stream
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
+	"lute/internal/storage"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/minio/minio-go/v7"
 )
 
 type StreamChunk struct {
@@ -62,7 +64,10 @@ func AudioStream(w http.ResponseWriter, r *http.Request) {
 
     // step 1: chunk audio
     // step 2: send audio via websocket
-    file, err := os.Open("bleachers.mp3")
+    query := r.URL.Query()
+    track := query.Get("track")
+    log.Println("Trying to get ", track)
+    file, err := storage.MinioClient.GetObject(context.Background(), "lute-audio", track, minio.GetObjectOptions{});
     if err != nil {
         log.Printf("[%v] Failed to open file for streaming: %v", conn.RemoteAddr(), err) 
             conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Failed to open file."))

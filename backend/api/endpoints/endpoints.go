@@ -12,4 +12,6 @@ func init() {
     http.HandleFunc("/upload", storage.Upload)
     http.HandleFunc("/stream", stream.AudioStream)
     http.HandleFunc("/ws", stream.WebsocketHandler)
+
+	http.HandleFunc("/tracks", storage.Tracks)
 }

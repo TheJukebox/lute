@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -109,7 +108,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		track := Track {
 			Name: body.Name,
 			UriName: body.UriName,
-			Path: fmt.Sprintf("lute-audio/%s", body.UriName + ext),
+			Path: body.UriName + ext,
 		}
 		track.Create()
     }
@@ -126,6 +125,9 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 			Tracks: tracks,
 		}
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.WriteHeader(http.StatusOK)
 		if err = json.NewEncoder(w).Encode(response); err != nil {
 			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)

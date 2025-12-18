@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { getAudioContext, audioContext } from '$lib/stream';
     import { type StreamChunk, StreamBuffer } from '$lib/stream';
+    import { Play } from '@lucide/svelte';
 
     let ws: WebSocket;
     let status: string = 'Disconnected';
@@ -67,11 +68,11 @@
         <p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
         <p>Websocket status: {status}</p>
 
-            <div class="p-4 flex flex-col max-w-48 gap-4">
+            <div class="p-5 flex flex-col max-w-48 gap-4 items-center">
                 <button
                     onclick={sendMessage}
                     aria-label="send-message"
-                    class="p-2 text-xl border rounded-full hover:bg-blue-100 active:scale-[0.95] transition shadow-xl cursor-pointer"
+                    class="p-2 text-xl border rounded-full hover:bg-blue-100 active:scale-[0.95] transition shadow cursor-pointer"
                 >
                     Send message to websocket
                 </button>
@@ -79,9 +80,9 @@
                 <button
                     aria-label="play"
                     onclick={play}
-                    class="p-2 text-xl border rounded-full hover:bg-blue-100 active:scale-[0.95] transition shadow-xl cursor-pointer"
+                    class="p-2 max-w-10 max-h-10 text-xl rounded-full bg-lime-400 hover:bg-lime-600 active:scale-[0.95] transition shadow cursor-pointer items-center"
                 >
-                    PLAY
+                    <Play class="h-5 w-5" />
                 </button>
             </div>
     </div>

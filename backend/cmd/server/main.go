@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"lute/internal/stream"
+	_ "lute/api/endpoints"
+	"lute/internal/storage"
 	"net/http"
 	"os"
 
@@ -15,10 +16,6 @@ import (
 type ServerConfig struct {
     Host string
     Port int
-}
-
-func hello(w http.ResponseWriter, req *http.Request) {
-    log.Printf("Received request from: %v", req.RemoteAddr)
 }
 
 func main() {
@@ -38,15 +35,17 @@ func main() {
     if err != nil {
         log.Fatalf("Failed to parse config file: %s", err)
     }
-    
-    http.HandleFunc("/hello", hello)
-    http.HandleFunc("/ws", stream.WebsocketHandler)
-    http.HandleFunc("/stream", stream.AudioStream)
+
+    log.Printf("Connecting to Minio...")
+    err = storage.Connect("minio:9000", "minioadmin")
+    if err != nil {
+        log.Fatalf("Failed to connect to Minio: %v", err)
+    }
+    log.Println("Connected to Minio.")
 
     log.Printf("Starting server...")
     server := &http.Server{
         Addr: fmt.Sprintf("%v:%v", config.Host, config.Port),
-
     }
     go func() {
         log.Fatal(server.ListenAndServe())

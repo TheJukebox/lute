@@ -3,8 +3,6 @@ import { StreamBuffer } from '$lib/stream';
 import type { StreamChunk } from '$lib/stream';
 import {audioContext, getAudioContext} from './stream';
 
-let counting: number = 0;
-
 export const playback = $state({ 
     playing: false,
     track: {},
@@ -15,27 +13,47 @@ export const playback = $state({
     gain: undefined,
     duration: 0,
     startedAt: 0,
+    offset: 0,
     timeElapsed: 0,
     volume: 1,
+    seeking: false,
+    countInterval: 0,
 });
 
 function countElapsed() {
-    playback.timeElapsed = (audioContext.currentTime - playback.startedAt);
+    playback.timeElapsed = (audioContext.currentTime - playback.startedAt + playback.offset);
     if (playback.timeElapsed == playback.duration) {
-        clearInterval(counting);
+        clearInterval(playback.countInterval);
+    }
+}
+
+export function setGain(value: number) {
+    if (playback.gain) {
+        playback.gain.gain.setValueAtTime(value, audioContext.currentTime);
+        playback.volume = value;
+        localStorage.setItem("volume", value.toString());
     }
 }
 
 export async function fadeOut(duration: number = 1) {
-    if (playback.node) {
-        playback.node.stop(duration);
+    if (playback.node && playback.gain) {
+        playback.gain.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
+        playback.node.stop(audioContext.currentTime + duration);
     }
 }
 
-export async function restartPlayback() {
+export async function fadeIn(duration: number = 1) {
+    if (playback.node && playback.gain) {
+        playback.gain.gain.linearRampToValueAtTime(playback.volume, audioContext.currentTime + duration);
+    }
+}
+
+export async function startPlaybackAt(offset: number = 0) {
+    playback.timeElapsed = offset;
+    playback.offset = offset;
     playback.playing = false;
-    if (counting) {
-        clearInterval(counting);
+    if (playback.countInterval) {
+        clearInterval(playback.countInterval);
     }
     if (playback.node) { 
         playback.node.stop();
@@ -43,17 +61,64 @@ export async function restartPlayback() {
     };
     getAudioContext()
     if (playback.track && playback.audio && audioContext) {
-        playback.timeElapsed = 0;
-        playback.startedAt = Date.now();
+        // gain
+        playback.gain = audioContext.createGain();
+        playback.gain.gain.setValueAtTime(playback.volume, audioContext.currentTime);
+
+        // buffer
         playback.node = audioContext?.createBufferSource();
+        playback.node.connect(playback.gain);
         playback.node.buffer = playback.audio;
-        playback.node.connect(audioContext?.destination);
         playback.duration = playback.audio.duration; 
+
+        // playback
+        playback.gain.connect(audioContext.destination);
+        playback.node.start(audioContext.currentTime, offset);
+        audioContext.resume();
+        playback.playing = true;
+        playback.startedAt = audioContext.currentTime;
+        playback.countInterval = setInterval(countElapsed);
+
+        playback.node.onended = () => {
+            clearInterval(playback.countInterval);
+        };
+    }
+}
+
+export async function restartPlayback() {
+    playback.playing = false;
+    if (playback.countInterval) {
+        clearInterval(playback.countInterval);
+    }
+    if (playback.node) { 
+        playback.node.stop();
+        playback.node = undefined; 
+    };
+    getAudioContext()
+    if (playback.track && playback.audio && audioContext) {
+        // gain
+        playback.gain = audioContext.createGain();
+        playback.gain.gain.setValueAtTime(playback.volume, audioContext.currentTime);
+
+        // buffer
+        playback.node = audioContext?.createBufferSource();
+        playback.node.connect(playback.gain);
+        playback.node.buffer = playback.audio;
+        playback.duration = playback.audio.duration; 
+        playback.offset = 0;
+        playback.timeElapsed = 0;
+
+        // playback
+        playback.gain.connect(audioContext.destination);
         playback.node.start();
         audioContext.resume();
         playback.playing = true;
         playback.startedAt = audioContext.currentTime;
-        counting = setInterval(countElapsed);
+        playback.countInterval = setInterval(countElapsed);
+
+        playback.node.onended = () => {
+            clearInterval(playback.countInterval);
+        };
     }
 }
 
@@ -65,10 +130,10 @@ export function togglePlayback() {
     }
 }
 
-export async function startPlayback(track: Track) {
+export async function startPlayback() {
     playback.playing = false;
-    if (counting) {
-        clearInterval(counting);
+    if (playback.countInterval) {
+        clearInterval(playback.countInterval);
     }
     if (playback.node) { 
         playback.node.stop();
@@ -88,7 +153,6 @@ export async function startPlayback(track: Track) {
             temp.set(data, playable.byteLength);
             playable = temp;
         }
-        console.log(playable);
         playback.audio = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
 
         // gain
@@ -100,6 +164,8 @@ export async function startPlayback(track: Track) {
         playback.node.connect(playback.gain);
         playback.node.buffer = playback.audio;
         playback.duration = playback.audio.duration; 
+        playback.offset = 0;
+        playback.timeElapsed = 0;
 
         // playback
         playback.gain.connect(audioContext.destination);
@@ -107,7 +173,11 @@ export async function startPlayback(track: Track) {
         audioContext.resume();
         playback.playing = true;
         playback.startedAt = audioContext.currentTime;
-        counting = setInterval(countElapsed);
+        playback.countInterval = setInterval(countElapsed);
+
+        playback.node.onended = () => {
+            clearInterval(playback.countInterval);
+        };
     } else {
         console.error("Could not fetch audio context for playback!");
     }

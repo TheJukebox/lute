@@ -18,6 +18,7 @@ export const playback = $state({
     volume: 1,
     seeking: false,
     countInterval: 0,
+    muted: false,
 });
 
 function countElapsed() {

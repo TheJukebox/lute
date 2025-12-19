@@ -42,7 +42,6 @@
 
     function setVolume(e: MouseEvent) {
         if (!volumeSlider) return;
-
         const rect = volumeSlider.getBoundingClientRect();
         const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
         playback.volume = x / rect.width;
@@ -73,6 +72,18 @@
             playback.seeking = false;
             startPlaybackAt(offset);
         }
+    };
+
+    function toggleMute() {
+        if (playback.muted) {
+            playback.muted = false;
+            playback.volume = 0.25;
+            setGain(0.25);
+        } else {
+            playback.muted = true;
+            playback.volume = 0;
+            setGain(0);
+        };
     };
 
     onMount(() => {
@@ -126,7 +137,7 @@
         </div>
         <div class="relative flex items-center w-full">
             <div class="ml-15 flex items-center gap-2">
-                <button onclick={() => setGain(0)}>
+                <button onclick={toggleMute}>
                     {#if playback.volume <= 0 }
                         <VolumeX class="text-slate-300 fill-slate-300"/>
                     {:else if playback.volume <= 0.25 }

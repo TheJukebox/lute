@@ -12,6 +12,7 @@ import (
 )
 
 var MinioClient *minio.Client
+var ctx = context.Background()
 
 func Connect(
     endpoint string,
@@ -25,6 +26,12 @@ func Connect(
         },
     )
     MinioClient = minioClient
+    log.Println("Creating buckets...")
+    exists, err := MinioClient.BucketExists(ctx, "lute-audio")
+    if !exists && err == nil {
+        log.Println("Creating bucket 'lute-audio'...")
+        err = MinioClient.MakeBucket(ctx, "lute-audio", minio.MakeBucketOptions{})
+    }
     return err
 }
 

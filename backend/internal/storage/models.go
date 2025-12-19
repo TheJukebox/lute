@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -10,7 +9,6 @@ import (
 )
 
 var pool *pgxpool.Pool
-var ctx = context.Background()
 
 func init() {
 	log.Printf("Connecting to Postgres...")
@@ -26,6 +24,25 @@ func init() {
 		return
 	}
 	log.Println("Connected to Postgres!")
+    log.Println("Creating tables...")
+    tracks := `
+        CREATE TABLE IF NOT EXISTS tracks
+        (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name VARCHAR NOT NULL,
+            uri_name VARCHAR NOT NULL,
+            path VARCHAR NOT NULL,
+            artist VARCHAR NOT NULL,
+            album VARCHAR NOT NULL,
+            number INTEGER NOT NULL,
+            disk INTEGER NOT NULL
+        )
+    `
+    _, err = pool.Query(ctx, tracks)
+    if err != nil {
+        log.Fatalf("Failed to create tables: %w", err)
+    }
+    log.Println("Created tables!")
 }
 
 type Track struct {

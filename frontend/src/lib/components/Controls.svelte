@@ -1,8 +1,9 @@
 <script>
     import { Play, Pause, SkipForward, SkipBack } from '@lucide/svelte';
     import { trackList } from '$lib/tracklist.svelte';
+    import { togglePlayback, playback } from '$lib/playback.svelte';
+    import { audioContext } from '$lib/stream';
     
-    let playing = false;
 </script>
     
 <div
@@ -16,7 +17,6 @@
             <div class="h-2 rounded-full bg-slate-400 shadow-sm/100"></div>
             <div class="flex flex-col items-center justify-center text-center w-full">
                 <div class="grid grid-cols-3 gap-0 font-semibold w-full">
-
                     <span>{trackList.currentTrack.Name}</span>
                     <span class="animate-pulse">·•·</span> 
                     <span>{trackList.currentTrack.Album}</span>
@@ -28,11 +28,11 @@
             <button>
                 <SkipBack class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer" />
             </button>
-            <button onclick={() => playing = !playing}>
-            {#if playing}
+            <button onclick={togglePlayback} class="active:scale-[0.95] transition">
+            {#if playback.playing}
                 <Pause class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
             {:else}
-                    <Play class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
+                <Play class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
             {/if}
             </button>
             <button>

@@ -33,4 +33,8 @@ export class StreamBuffer {
     next() {
         return this.chunks.shift()
     }
+    
+    clear() {
+        this.chunks = new Array(0);
+    }
 }

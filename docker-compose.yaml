@@ -7,6 +7,7 @@ services:
       POSTGRES_DB: $POSTGRES_DB
     ports:
       - "5432:5432"
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
@@ -14,6 +15,7 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    restart: unless-stopped
 
   backend:
     image: lute-backend:latest
@@ -25,6 +27,7 @@ services:
     depends_on:
       - postgres
       - minio
+    restart: unless-stopped
 
   frontend:
     image: lute-frontend:latest
@@ -33,4 +36,5 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+    restart: unless-stopped
 

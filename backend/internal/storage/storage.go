@@ -12,6 +12,7 @@ import (
 )
 
 var MinioClient *minio.Client
+var ctx = context.Background()
 
 func Connect(
     endpoint string,
@@ -25,6 +26,12 @@ func Connect(
         },
     )
     MinioClient = minioClient
+    log.Println("Creating buckets...")
+    exists, err := MinioClient.BucketExists(ctx, "lute-audio")
+    if !exists && err == nil {
+        log.Println("Creating bucket 'lute-audio'...")
+        err = MinioClient.MakeBucket(ctx, "lute-audio", minio.MakeBucketOptions{})
+    }
     return err
 }
 
@@ -40,11 +47,19 @@ type UploadRequest struct {
     Name string `json:"name"`
     UriName string `json:"uriName"`
     ContentType string `json:"contentType"`
+    Artist string
+    Album string
+    Number int
+    Disk int
 }
 
 type PresignedUploadResponse struct {
     URL string `json:"url"`
     Fields map[string]string `json:"fields"`
+}
+
+type TracksResponse struct {
+	Tracks []Track `json:"tracks"`
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -68,18 +83,26 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             http.Error(w, "name, uriName, and contentType must be specified.", http.StatusBadRequest)
             return
         }
-
-
+        name := body.Name
+        uriName := body.UriName
+        contentType := body.ContentType
         ext, _ := mimeToExtension[body.ContentType]
-        filename := body.Name + ext 
+        path := body.UriName + ext
+        artist := body.Artist
+        album := body.Album
+        number := body.Number
+        disk := body.Disk
+
         expiry := 10 * time.Minute
 
         policy := minio.NewPostPolicy()
         policy.SetBucket("lute-audio")
-        policy.SetKey(filename)
+        policy.SetKey(path)
         policy.SetExpires(time.Now().UTC().Add(expiry))
-        policy.SetContentType(body.ContentType)
-        policy.SetUserMetadata("name", body.Name)
+        policy.SetContentType(contentType)
+        policy.SetUserMetadata("name", name)
+        policy.SetUserMetadata("artist", artist)
+        policy.SetUserMetadata("album", album)
 
         presignedURL, formData, err := MinioClient.PresignedPostPolicy(context.Background(), policy)
         if err != nil {
@@ -100,5 +123,39 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
             return
         }
+
+		track := Track {
+			Name: name,
+			UriName: uriName,
+			Path: path,
+            Artist: artist,
+            Album: album,
+            Number: number,
+            Disk: disk,
+		}
+		track.Create()
     }
+}
+
+func Tracks(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		tracks, err := AllTracks()	
+		if err != nil {
+			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+			return
+		}
+		response := TracksResponse {
+			Tracks: tracks,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(response); err != nil {
+            log.Printf("Failed to fetch tracks from database: %w", err)
+			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+			return
+		}
+	}
 }

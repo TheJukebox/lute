@@ -70,7 +70,7 @@
 </script>
 
 <div 
-    class={`relative p-4 min-h-30 min-w-90 max-h-30 max-w-90 rounded-xl shadow hover:bg-lime-100 flex justify-center items-center ${uploading ? "bg-lime-100 scale-[0.95]" : "bg-lime-50"} transition`}
+    class={`relative p-4 min-h-30 max-w-100 rounded-xl shadow hover:bg-lime-100 flex justify-center items-center ${uploading ? "bg-lime-100 scale-[0.95]" : "bg-lime-50"} transition`}
 >
     <label class={`flex flex-col flex-1 justify-center items-center absolute inset-0 hover:cursor-pointer ${uploading ? "text-lime-800" : "text-lime-600"}`} ondrop={onDrop}>
     <div class="p-2 text-center">{uploading ? `Uploading ${uploadName} (${uploadCurrent} of ${uploadingCount})...` : "Drop audio files or click here to upload."}</div>

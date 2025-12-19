@@ -1,53 +1,34 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { getAudioContext, audioContext } from '$lib/stream';
+    import { type Track } from '$lib/upload';
     import { type StreamChunk, StreamBuffer } from '$lib/stream';
-    import { trackList, fetchTracks } from '$lib/tracklist.svelte.ts';
-    
-    const buffer: StreamBuffer = new StreamBuffer();
+    import { trackList, fetchTracks } from '$lib/tracklist.svelte';
+    import { startPlayback, playback } from '$lib/playback.svelte'; 
 
-    async function playTrack(track: string, id: string) {
-        trackList.nowPlaying = id;
+
+    async function playTrack(track: Track) {
+        trackList.nowPlaying = track.ID;
+        trackList.currentTrack = track; 
         const ws: WebSocket = new WebSocket(
-            `ws://localhost:7001/stream?track=${track}`
+            `ws://localhost:7001/stream?track=${encodeURIComponent(track.Path)}`
         );
         ws.onopen = () => {
-            status = 'Connected';
+            console.debug("Websocket open.")
         };
 
         ws.onmessage = async (e) => {
             const data: StreamChunk = JSON.parse(await e.data.text())
-            buffer.push(data);
+            playback.buffer.push(data);
         };
 
         ws.onclose = async (e) => {
-            status = `Disconnected: ${e}`;
-            console.log(buffer);
-
-            getAudioContext();
-            audioContext?.state === 'suspended' && audioContext?.resume();
-            let playable: Uint8Array = new Uint8Array(0);
-            while (true) {
-                const chunk: StreamChunk | undefined = buffer.next();
-                if (chunk === undefined) {
-                    break;
-                }
-                const data: Uint8Array = Uint8Array.from(atob(chunk.Data), c => c.charCodeAt(0));
-                let temp = new Uint8Array(playable.byteLength + data.byteLength);
-                temp.set(playable, 0);
-                temp.set(data, playable.byteLength);
-                playable = temp;
-            }
-            console.log(playable);
-            const audio: AudioBuffer = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
-            const source = audioContext?.createBufferSource();
-            source.buffer = audio;
-            source.connect(audioContext?.destination);
-            source.start();
+            console.debug("Websocket closed.")
+            startPlayback(track);
         };
 
         ws.onerror = (e) => {
-            status = `Error: ${e}`;
+            console.error("Websocket error: ", e)
         };
     };
 
@@ -84,7 +65,7 @@
             {#each trackList.tracks as track}
                 <button 
                     class={`grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition ${trackStyle(track.ID)}`}
-                    onclick={() => playTrack(encodeURIComponent(track.Path), track.ID)}
+                    onclick={() => playTrack(track)}
                     type="button"
                 >
                     <div>{track.Number}</div>

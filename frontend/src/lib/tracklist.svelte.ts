@@ -1,4 +1,6 @@
-export const trackList = $state({ tracks: [], loading: true, nowPlaying: ""});
+import type { Track } from '$lib/upload';
+
+export const trackList = $state({ tracks: [], loading: true, nowPlaying: "", currentTrack: {}});
 
 export async function fetchTracks() {
     trackList.loading = true;

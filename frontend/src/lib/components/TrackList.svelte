@@ -6,10 +6,11 @@
     
     const buffer: StreamBuffer = new StreamBuffer();
 
-    async function playTrack(track: string, id: string) {
-        trackList.nowPlaying = id;
+    async function playTrack(track: Track) {
+        trackList.nowPlaying = track.ID;
+        trackList.currentTrack = track; 
         const ws: WebSocket = new WebSocket(
-            `ws://localhost:7001/stream?track=${track}`
+            `ws://localhost:7001/stream?track=${encodeURIComponent(track.Path)}`
         );
         ws.onopen = () => {
             status = 'Connected';
@@ -84,7 +85,7 @@
             {#each trackList.tracks as track}
                 <button 
                     class={`grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition ${trackStyle(track.ID)}`}
-                    onclick={() => playTrack(encodeURIComponent(track.Path), track.ID)}
+                    onclick={() => playTrack(track)}
                     type="button"
                 >
                     <div>{track.Number}</div>

@@ -112,18 +112,19 @@
                 aria-valuemin={0}
                 aria-valuemax={1}
                 tabindex="0"
-                class="h-2 rounded-full bg-slate-400 w-full shadow-sm/100"
+                class="group h-2 rounded-full bg-slate-400 w-full shadow-sm/100"
             >
                 <div class="relative h-2 rounded-full bg-lime-100" style={`width: ${(playback.timeElapsed / playback.duration) * 100}%`}>
                     <div 
-                        class="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 hover:scale-[1.25] bg-lime-400 rounded-full shadow-xs/40 hover:bg-lime-500"
+                        class="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 group-hover:scale-[2] bg-lime-400 rounded-full shadow-xs/40 group-hover:bg-lime-500 transition"
                         onmousedown={mouseDown}
                         role="slider"
                         aria-valuenow={playback.timeElapsed}
                         aria-valuemin={0}
                         aria-valuemax={1}
                         tabindex="0"
-                    ></div>
+                    >
+                    </div>
                 </div>
             </div>
             <div class="px-4 py-1 float-right text-lime-800 text-sm">{formatTime(playback.timeElapsed)}/{formatTime(playback.duration) || "00:00:00"}</div>
@@ -156,11 +157,11 @@
                     aria-valuemax={1}
                     tabindex="0"
                     onmousedown={mouseDown}
-                    class="h-2 rounded-full bg-slate-400 w-30 shadow-sm/100"
+                    class="group h-2 rounded-full bg-slate-400 w-30 shadow-sm/100"
                 >
                     <div class={`h-2 rounded-full bg-lime-100 relative ${dragging ? "" : "transition-all"}`} style={`width: ${playback.volume * 100}%`}>
                         <div 
-                            class="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 hover:scale-[1.25] bg-lime-400 rounded-full shadow-xs/40 hover:bg-lime-500"
+                            class="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 group-hover:scale-[1.25] bg-lime-400 rounded-full shadow-xs/40 group-hover:bg-lime-500 transition"
                             onmousedown={mouseDown}
                             role="slider"
                             aria-valuenow={playback.volume}

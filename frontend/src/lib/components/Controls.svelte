@@ -1,9 +1,20 @@
-<script>
+<script lang="ts">
+    import { onMount } from 'svelte';
     import { Play, Pause, SkipForward, SkipBack } from '@lucide/svelte';
     import { trackList } from '$lib/tracklist.svelte';
     import { togglePlayback, playback } from '$lib/playback.svelte';
-    import { audioContext } from '$lib/stream';
-    
+
+    function formatTime(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+
+        return [
+            String(h).padStart(2, '0'),
+            String(m).padStart(2, '0'),
+            String(s).padStart(2, '0'),
+        ].join(':');
+    };
 </script>
     
 <div
@@ -13,15 +24,17 @@
         <div class="inset-shadow-xs/20 p-2 min-w-full min-h-full bg-lime-200 rounded-sm"></div>
     </div>
     <div class="flex flex-col gap-5 p-2 min-w-full shadow rounded-lg bg-lime-100 items-center">
-        <div class="inset-shadow-sm/20 bg-lime-200 rounded-lg p-2 min-w-full min-h-15 max-h-20">
-            <div class="h-2 rounded-full bg-slate-400 shadow-sm/100"></div>
+        <div class="inset-shadow-sm/20 bg-lime-200 rounded-lg p-2 min-w-full min-h-30 transition">
+            <div class="h-2 rounded-full bg-slate-400 w-full shadow-sm/100">
+                <div class="h-2 rounded-full bg-lime-100" style={`width: ${(playback.timeElapsed / playback.duration) * 100}%`}></div>
+            </div>
+            <div class="px-4 py-1 float-right text-lime-800 text-sm">{formatTime(playback.timeElapsed)}/{formatTime(playback.duration) || "00:00:00"}</div>
             <div class="flex flex-col items-center justify-center text-center w-full">
-                <div class="grid grid-cols-3 gap-0 font-semibold w-full">
+                <div class="grid grid-cols-3 gap-0 font-semibold w-full text-lime-800">
                     <span>{trackList.currentTrack.Name}</span>
-                    <span class="animate-pulse">·•·</span> 
+                    <span >{trackList.currentTrack.Artist}</span> 
                     <span>{trackList.currentTrack.Album}</span>
                 </div>
-                <div class="">{trackList.currentTrack.Artist}</div>
             </div>
         </div>
         <div class="grid grid-cols-3 gap-4">

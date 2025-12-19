@@ -3,9 +3,25 @@ import { StreamBuffer } from '$lib/stream';
 import type { StreamChunk } from '$lib/stream';
 import {audioContext, getAudioContext} from './stream';
 
-export const playback = $state({ playing: false, track: {}, buffer: new StreamBuffer(), node: undefined});
+let counting: number = 0;
 
-export async function togglePlayback() {
+export const playback = $state({ 
+    playing: false,
+    track: {},
+    buffer: new StreamBuffer(),
+    node: undefined,
+    duration: 0,
+    startedAt: 0,
+    timeElapsed: 0,
+});
+
+function countElapsed() {
+    if (playback.playing) {
+        playback.timeElapsed = Math.floor((Date.now() - playback.startedAt) / 1000);
+    }
+}
+
+export function togglePlayback() {
     getAudioContext()
     if (audioContext) {
         audioContext.state === "suspended" ? audioContext.resume() : audioContext.suspend();
@@ -15,6 +31,9 @@ export async function togglePlayback() {
 
 export async function startPlayback(track: Track) {
     playback.playing = false;
+    if (counting) {
+        clearInterval(counting);
+    }
     if (playback.node) { 
         playback.node.stop();
         playback.node = undefined; 
@@ -38,9 +57,12 @@ export async function startPlayback(track: Track) {
         playback.node = audioContext?.createBufferSource();
         playback.node.buffer = audio;
         playback.node.connect(audioContext?.destination);
+        playback.duration = audio.duration; 
         playback.node.start();
         audioContext.resume();
         playback.playing = true;
+        playback.startedAt = Date.now();
+        counting = setInterval(countElapsed);
     } else {
         console.error("Could not fetch audio context for playback!");
     }

@@ -9,6 +9,7 @@ export const playback = $state({
     playing: false,
     track: {},
     buffer: new StreamBuffer(),
+    audio: {},
     node: undefined,
     duration: 0,
     startedAt: 0,
@@ -18,6 +19,31 @@ export const playback = $state({
 function countElapsed() {
     if (playback.playing) {
         playback.timeElapsed = Math.floor((Date.now() - playback.startedAt) / 1000);
+    }
+}
+
+export async function restartPlayback() {
+    playback.playing = false;
+    if (counting) {
+        clearInterval(counting);
+    }
+    if (playback.node) { 
+        playback.node.stop();
+        playback.node = undefined; 
+    };
+    getAudioContext()
+    if (playback.track && playback.audio && audioContext) {
+        playback.timeElapsed = 0;
+        playback.startedAt = Date.now();
+        playback.node = audioContext?.createBufferSource();
+        playback.node.buffer = playback.audio;
+        playback.node.connect(audioContext?.destination);
+        playback.duration = playback.audio.duration; 
+        playback.node.start();
+        audioContext.resume();
+        playback.playing = true;
+        playback.startedAt = Date.now();
+        counting = setInterval(countElapsed);
     }
 }
 
@@ -53,11 +79,11 @@ export async function startPlayback(track: Track) {
             playable = temp;
         }
         console.log(playable);
-        const audio: AudioBuffer = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
+        playback.audio = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
         playback.node = audioContext?.createBufferSource();
-        playback.node.buffer = audio;
+        playback.node.buffer = playback.audio;
         playback.node.connect(audioContext?.destination);
-        playback.duration = audio.duration; 
+        playback.duration = playback.audio.duration; 
         playback.node.start();
         audioContext.resume();
         playback.playing = true;

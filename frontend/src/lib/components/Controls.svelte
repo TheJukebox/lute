@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { Play, Pause, SkipForward, SkipBack } from '@lucide/svelte';
     import { trackList } from '$lib/tracklist.svelte';
-    import { togglePlayback, playback } from '$lib/playback.svelte';
+    import { togglePlayback, restartPlayback, playback } from '$lib/playback.svelte';
 
     function formatTime(seconds) {
         const h = Math.floor(seconds / 3600);
@@ -29,7 +29,7 @@
                 <div class="h-2 rounded-full bg-lime-100" style={`width: ${(playback.timeElapsed / playback.duration) * 100}%`}></div>
             </div>
             <div class="px-4 py-1 float-right text-lime-800 text-sm">{formatTime(playback.timeElapsed)}/{formatTime(playback.duration) || "00:00:00"}</div>
-            <div class="flex flex-col items-center justify-center text-center w-full">
+            <div class="flex flex-col items-center justify-center text-center w-full transition">
                 <div class="grid grid-cols-3 gap-0 font-semibold w-full text-lime-800">
                     <span>{trackList.currentTrack.Name}</span>
                     <span >{trackList.currentTrack.Artist}</span> 
@@ -38,7 +38,7 @@
             </div>
         </div>
         <div class="grid grid-cols-3 gap-4">
-            <button>
+            <button onclick={restartPlayback} class="active:scale-[0.95] transition">
                 <SkipBack class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer" />
             </button>
             <button onclick={togglePlayback} class="active:scale-[0.95] transition">

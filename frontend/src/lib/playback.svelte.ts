@@ -50,13 +50,13 @@ export async function fadeIn(duration: number = 1) {
 }
 
 export async function startPlaybackAt(offset: number = 0) {
-    playback.timeElapsed = offset;
     playback.offset = offset;
     playback.playing = false;
     if (playback.countInterval) {
         clearInterval(playback.countInterval);
     }
     if (playback.node) { 
+        playback.node.onended = null;
         playback.node.stop();
         playback.node = undefined; 
     };
@@ -71,6 +71,7 @@ export async function startPlaybackAt(offset: number = 0) {
         playback.node.connect(playback.gain);
         playback.node.buffer = playback.audio;
         playback.duration = playback.audio.duration; 
+        playback.timeElapsed = offset;
 
         // playback
         playback.gain.connect(audioContext.destination);
@@ -137,6 +138,7 @@ export async function startPlayback() {
         clearInterval(playback.countInterval);
     }
     if (playback.node) { 
+        playback.node.onended = null;
         playback.node.stop();
         playback.node = undefined; 
     };

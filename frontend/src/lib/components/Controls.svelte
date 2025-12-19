@@ -172,7 +172,7 @@
                 </div>
             </div>
             <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4">
-                <button onclick={restartPlayback} class="active:scale-[0.95] transition">
+                <button onclick={() => startPlaybackAt(0)} class="active:scale-[0.95] transition">
                     <SkipBack class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer" />
                 </button>
                 <button onclick={togglePlayback} class="mx-4 active:scale-[0.95] transition">

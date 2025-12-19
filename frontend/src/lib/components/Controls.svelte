@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { Play, Pause, SkipForward, SkipBack } from '@lucide/svelte';
+    import { Play, Pause, SkipForward, SkipBack, Volume, Volume1, Volume2 } from '@lucide/svelte';
     import { trackList } from '$lib/tracklist.svelte';
     import { togglePlayback, restartPlayback, playback } from '$lib/playback.svelte';
 
@@ -37,20 +37,34 @@
                 </div>
             </div>
         </div>
-        <div class="grid grid-cols-3 gap-4">
-            <button onclick={restartPlayback} class="active:scale-[0.95] transition">
-                <SkipBack class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer" />
-            </button>
-            <button onclick={togglePlayback} class="active:scale-[0.95] transition">
-            {#if playback.playing}
-                <Pause class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
-            {:else}
-                <Play class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
-            {/if}
-            </button>
-            <button>
-                <SkipForward class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
-            </button>
+        <div class="relative flex items-center w-full">
+            <div class="ml-15 flex items-center gap-2">
+                {#if playback.volume <= 50 }
+                    <Volume class="text-slate-500 fill-slate-500"/>
+                {:else if playback.volume <= 75 }
+                    <Volume1 class="text-slate-500 fill-slate-500"/>
+                {:else }
+                    <Volume2 class="text-slate-500 fill-slate-500"/>
+                {/if}
+                <div class="h-2 rounded-full bg-slate-400 w-30 shadow-sm/100">
+                    <div class="h-2 rounded-full bg-lime-100" style={`width: ${playback.volume}%`}></div>
+                </div>
+            </div>
+            <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4">
+                <button onclick={restartPlayback} class="active:scale-[0.95] transition">
+                    <SkipBack class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer" />
+                </button>
+                <button onclick={togglePlayback} class="mx-4 active:scale-[0.95] transition">
+                {#if playback.playing}
+                    <Pause class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
+                {:else}
+                    <Play class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
+                {/if}
+                </button>
+                <button>
+                    <SkipForward class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer"/>
+                </button>
+            </div>
         </div>
     </div>
 </div>

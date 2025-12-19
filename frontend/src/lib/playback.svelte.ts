@@ -8,16 +8,28 @@ let counting: number = 0;
 export const playback = $state({ 
     playing: false,
     track: {},
+    trackIndex: 0,
     buffer: new StreamBuffer(),
     audio: {},
     node: undefined,
+    gain: undefined,
     duration: 0,
     startedAt: 0,
     timeElapsed: 0,
+    volume: 1,
 });
 
 function countElapsed() {
     playback.timeElapsed = (audioContext.currentTime - playback.startedAt);
+    if (playback.timeElapsed == playback.duration) {
+        clearInterval(counting);
+    }
+}
+
+export async function fadeOut(duration: number = 1) {
+    if (playback.node) {
+        playback.node.stop(duration);
+    }
 }
 
 export async function restartPlayback() {
@@ -78,10 +90,19 @@ export async function startPlayback(track: Track) {
         }
         console.log(playable);
         playback.audio = await audioContext?.decodeAudioData(playable.buffer as ArrayBuffer);
+
+        // gain
+        playback.gain = audioContext.createGain();
+        playback.gain.gain.setValueAtTime(playback.volume, audioContext.currentTime);
+
+        // buffer
         playback.node = audioContext?.createBufferSource();
+        playback.node.connect(playback.gain);
         playback.node.buffer = playback.audio;
-        playback.node.connect(audioContext?.destination);
         playback.duration = playback.audio.duration; 
+
+        // playback
+        playback.gain.connect(audioContext.destination);
         playback.node.start();
         audioContext.resume();
         playback.playing = true;

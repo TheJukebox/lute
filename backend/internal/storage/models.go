@@ -33,14 +33,18 @@ type Track struct {
 	Name string
 	UriName string
 	Path string
+    Artist string
+    Album string
+    Number int
+    Disk int
 }
 
 func (obj Track) Create() error {
 	query := `
-		INSERT INTO tracks (name, uri_name, path)
-		VALUES ($1, $2, $3)
+		INSERT INTO tracks (name, uri_name, path, artist, album, number, disk)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
-	err := pool.QueryRow(ctx, query, obj.Name, obj.UriName, obj.Path)
+	err := pool.QueryRow(ctx, query, obj.Name, obj.UriName, obj.Path, obj.Artist, obj.Album, obj.Number, obj.Disk)
 	if err != nil {
 		return fmt.Errorf("Failed to create Track object: %w", err)
 	}
@@ -49,7 +53,7 @@ func (obj Track) Create() error {
 
 func AllTracks() ([]Track, error) {
 	query := `
-		SELECT * FROM tracks;		
+		SELECT id, name, uri_name, path, artist, album, number, disk FROM tracks;		
 	`
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
@@ -58,7 +62,7 @@ func AllTracks() ([]Track, error) {
 	var tracks []Track
 	for rows.Next() {
 		var track Track
-		err = rows.Scan(&track.ID, &track.Name, &track.UriName, &track.Path)
+		err = rows.Scan(&track.ID, &track.Name, &track.UriName, &track.Path, &track.Artist, &track.Album, &track.Number, &track.Disk)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
 		}

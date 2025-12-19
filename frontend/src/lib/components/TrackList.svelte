@@ -2,19 +2,12 @@
     import { onMount } from 'svelte';
     import { getAudioContext, audioContext } from '$lib/stream';
     import { type StreamChunk, StreamBuffer } from '$lib/stream';
+    import { trackList, fetchTracks } from '$lib/tracklist.svelte.ts';
     
     const buffer: StreamBuffer = new StreamBuffer();
-    let tracks = $state([]);
-    let loading = $state(true);
 
-    const fetchTracks = async () => {
-        const response = await fetch("http://localhost:7001/tracks");
-        const data = await response.json();
-        tracks = data.tracks;
-        loading = false;
-    };
-
-    async function playTrack(track: string) {
+    async function playTrack(track: string, id: string) {
+        trackList.nowPlaying = id;
         const ws: WebSocket = new WebSocket(
             `ws://localhost:7001/stream?track=${track}`
         );
@@ -58,24 +51,48 @@
         };
     };
 
+    function isPlaying(id: string): boolean {
+        if (trackList.nowPlaying === id) { return true; } 
+        return false;
+    };
+
+    function trackStyle(id: string): string {
+        if (isPlaying(id)) {
+            return "hover:bg-lime-200 hover:cursor-pointer text-lime-900 font-bold border border-sm border-lime-500 rounded-lg hover:text-green-700 shadow-sm";
+        }
+        return "hover:bg-lime-200 hover:cursor-pointer hover:scale-[1.001] text-lime-900 hover:font-bold rounded-lg hover:shadow";
+    };
+
     onMount(() => {
         fetchTracks();
     });
 </script>
 
-<div class="p-4 shadow rounded-xl bg-lime-50 min-h-80">
-    {#if loading}
-        <div>
-            Loading...
+<div class="p-4 shadow rounded-xl bg-lime-50 min-h-80 flex flex-col gap-2 overflow-x-clip h-full max-h-320 transition scroll-smooth">
+        <div class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full text-lime-600 font-semibold rounded-full bg-lime-200 shadow">
+            <div>No.</div>
+            <div>Track</div>
+            <div>Artist</div>
+            <div>Album</div>
         </div>
-    {:else}
-        {#each tracks as track}
-    <div 
-        onclick={() => playTrack(track.Path)}
-        class="p-2 bg-lime-100 border border-b border-lime-200 hover:cursor-pointer"
-    >
-                {track.Name}
+        {#if trackList.loading}
+            <div class="flex flex-1 justify-center items-center max-w-full max-h-full text-xl">
+                Loading...
             </div>
-        {/each}
+        {:else}
+        <div class="shadow rounded-xl bg-lime-100 overflow-y-auto overflow-x-clip">
+            {#each trackList.tracks as track}
+                <button 
+                    class={`grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition ${trackStyle(track.ID)}`}
+                    onclick={() => playTrack(encodeURIComponent(track.Path), track.ID)}
+                    type="button"
+                >
+                    <div>{track.Number}</div>
+                    <div>{track.Name}</div>
+                    <div>{track.Artist}</div>
+                    <div>{track.Album}</div>
+                </button>
+            {/each}
+        </div>
     {/if}
 </div>

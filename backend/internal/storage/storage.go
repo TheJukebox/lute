@@ -40,6 +40,10 @@ type UploadRequest struct {
     Name string `json:"name"`
     UriName string `json:"uriName"`
     ContentType string `json:"contentType"`
+    Artist string
+    Album string
+    Number int
+    Disk int
 }
 
 type PresignedUploadResponse struct {
@@ -72,18 +76,26 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             http.Error(w, "name, uriName, and contentType must be specified.", http.StatusBadRequest)
             return
         }
-
-
+        name := body.Name
+        uriName := body.UriName
+        contentType := body.ContentType
         ext, _ := mimeToExtension[body.ContentType]
-        filename := body.Name + ext 
+        path := body.UriName + ext
+        artist := body.Artist
+        album := body.Album
+        number := body.Number
+        disk := body.Disk
+
         expiry := 10 * time.Minute
 
         policy := minio.NewPostPolicy()
         policy.SetBucket("lute-audio")
-        policy.SetKey(filename)
+        policy.SetKey(path)
         policy.SetExpires(time.Now().UTC().Add(expiry))
-        policy.SetContentType(body.ContentType)
-        policy.SetUserMetadata("name", body.Name)
+        policy.SetContentType(contentType)
+        policy.SetUserMetadata("name", name)
+        policy.SetUserMetadata("artist", artist)
+        policy.SetUserMetadata("album", album)
 
         presignedURL, formData, err := MinioClient.PresignedPostPolicy(context.Background(), policy)
         if err != nil {
@@ -106,9 +118,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
         }
 
 		track := Track {
-			Name: body.Name,
-			UriName: body.UriName,
-			Path: body.UriName + ext,
+			Name: name,
+			UriName: uriName,
+			Path: path,
+            Artist: artist,
+            Album: album,
+            Number: number,
+            Disk: disk,
 		}
 		track.Create()
     }
@@ -130,6 +146,7 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.WriteHeader(http.StatusOK)
 		if err = json.NewEncoder(w).Encode(response); err != nil {
+            log.Printf("Failed to fetch tracks from database: %w", err)
 			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
 			return
 		}

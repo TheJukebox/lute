@@ -1,5 +1,16 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { 
+        uploadTrack,
+    } from '$lib/upload';
+    import type {
+        Track
+    } from '$lib/upload';
+    import { parseBlob, parseStream } from 'music-metadata';
+    import type {
+        IAudioMetadata
+    } from 'music-metadata';
+    import { fetchTracks} from '$lib/tracklist.svelte.ts';
 
     let uploading: boolean = false;
     let uploadName: string = "";
@@ -25,42 +36,35 @@
             uploadingCount = e.dataTransfer.files.length;
             uploadCurrent = 1;
             for (const file of e.dataTransfer.files) {
-                const name: string = file.name.split(".")[0];
+
+                const metadata: IAudioMetadata = await parseBlob(file);
+                const name: string = metadata.common.title || file.name;
+                const album: string = metadata.common.album || "Unknown";
+                const artist: string = metadata.common.artist || "Unknown";
+                const date: string = metadata.common.date || ""; 
+                const release: string = metadata.common.originaldate || ""; 
+                const number: number = metadata.common.track.no || 1;
+                const disk: number = metadata.common.disk.no || 1;
                 uploadName = name;
-                const uriName: string = encodeURIComponent(name);
-                const contentType: string = file.type;
-                const response: Response = await fetch(
-                    "http://localhost:7001/upload",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            Name: name,
-                            UriName: uriName,
-                            ContentType: contentType,
-                        }),
-                    },
-                );
-                const data: Object = await response.json();
-                const formData = new FormData();
-                for (const [k, v] of Object.entries(data.fields)) {
-                    formData.append(k, v);
-                }
-                formData.append("file", file);
-                const uploadResponse: Response = await fetch(
-                    "http://localhost:9000/lute-audio", 
-                    {
-                        method: "POST",
-                        body: formData,
-                    },
-                );
-                console.debug(uploadResponse);
+
+                const track: Track = {
+                    Name: name,
+                    UriName: encodeURIComponent(`${artist}/${album}/${name}`),
+                    ContentType: file.type,
+                    Artist: artist,
+                    Album: album,
+                    Date: date,
+                    Release: release,
+                    Number: number,
+                    Disk: disk,
+                };
+                console.debug(`Uploading track: ${JSON.stringify(track)}`);
+                uploadTrack(track, file);
                 uploadCurrent++;
             }
             uploading = false;
             uploadCurrent = 0;
+            fetchTracks();
         }
     };
 </script>

@@ -17,9 +17,7 @@ export const playback = $state({
 });
 
 function countElapsed() {
-    if (playback.playing) {
-        playback.timeElapsed = Math.floor((Date.now() - playback.startedAt) / 1000);
-    }
+    playback.timeElapsed = (audioContext.currentTime - playback.startedAt);
 }
 
 export async function restartPlayback() {
@@ -42,7 +40,7 @@ export async function restartPlayback() {
         playback.node.start();
         audioContext.resume();
         playback.playing = true;
-        playback.startedAt = Date.now();
+        playback.startedAt = audioContext.currentTime;
         counting = setInterval(countElapsed);
     }
 }
@@ -87,7 +85,7 @@ export async function startPlayback(track: Track) {
         playback.node.start();
         audioContext.resume();
         playback.playing = true;
-        playback.startedAt = Date.now();
+        playback.startedAt = audioContext.currentTime;
         counting = setInterval(countElapsed);
     } else {
         console.error("Could not fetch audio context for playback!");

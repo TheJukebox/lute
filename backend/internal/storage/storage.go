@@ -49,8 +49,8 @@ type UploadRequest struct {
     ContentType string `json:"contentType"`
     Artist string
     Album string
-    Number int
-    Disk int
+    TrackNumber int
+    DiskNumber int
 }
 
 type PresignedUploadResponse struct {
@@ -90,8 +90,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
         path := body.UriName + ext
         artist := body.Artist
         album := body.Album
-        number := body.Number
-        disk := body.Disk
+        number := body.TrackNumber
+        disk := body.DiskNumber
 
         expiry := 10 * time.Minute
 
@@ -130,8 +130,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			Path: path,
             Artist: artist,
             Album: album,
-            Number: number,
-            Disk: disk,
+            TrackNumber: number,
+            DiskNumber: disk,
 		}
 		track.Create()
     }

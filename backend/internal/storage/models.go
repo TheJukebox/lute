@@ -29,7 +29,7 @@ type IntegerField struct {
     null bool 
     primaryKey bool
     foreignKey bool
-    foreignKeyRef BaseTable
+    foreignKeyRef Table
 }
 func (f IntegerField) Name() string { return f.name }
 func (f IntegerField) Type() any { return "INTEGER" }
@@ -74,7 +74,7 @@ type TextField struct {
     null bool 
     primaryKey bool
     foreignKey bool
-    foreignKeyRef BaseTable
+    foreignKeyRef Table
 }
 
 func (f TextField) Name() string { return f.name }
@@ -117,7 +117,7 @@ type IDField struct {
     value uuid.UUID 
     primaryKey bool
     foreignKey bool
-    foreignKeyRef BaseTable
+    foreignKeyRef Table
     null bool
 }
 
@@ -151,10 +151,58 @@ func (f IDField) ForeignKey(onDelete string) string {
 
 
 type Table interface {
-    Name() 
-    PrimaryKey()
-    Fields()
-    Create()
+    Name() string 
+    PrimaryKey() Field
+    Fields() []Field
+    Create() error
+}
+
+type JunctionTable struct {
+    name string
+    primaryKey Field
+    referenceTables []Table
+    fields []Field
+}
+
+func (t JunctionTable) Name() string { return t.name }
+func (t JunctionTable) Fields() []Field { return t.fields }
+func (t JunctionTable) PrimaryKey() Field { return t.primaryKey }
+func (t JunctionTable) Create() error {
+    queryBase := `
+        CREATE TABLE IF NOT EXISTS %v
+        (%v, PRIMARY KEY (%v));
+    `
+    referenceTables := t.referenceTables
+    // we need to set up the referenceTables here
+    // as sql entries
+    fieldStrings := make([]string, len(referenceTables))
+    pkeys := make([]string, len(referenceTables))
+    for i, table := range referenceTables {
+        fieldString := fmt.Sprintf(
+            "%v_id %v REFERENCES %v(%v) ON DELETE CASCADE",
+            table.Name(),
+            table.PrimaryKey().Type(),
+            table.Name(),
+            table.PrimaryKey().Name(),
+        )
+        fieldStrings[i] = fieldString
+        pkeys[i] = fmt.Sprintf("%v_id", table.Name()) 
+        t.fields = append(
+            t.fields, 
+            IDField { name: fmt.Sprintf("%v_id", table.Name()), foreignKey: true, foreignKeyRef: table },
+        )
+    }
+    t.primaryKey = IDField {
+        name: fmt.Sprintf("pkey_%v", t.name),
+    }
+    query := fmt.Sprintf(
+        queryBase,
+        t.name,
+        strings.Join(fieldStrings, ", "),
+        strings.Join(pkeys, ", "),
+    )
+    _, err := pool.Exec(ctx, query)
+    return err
 }
 
 type BaseTable struct {
@@ -201,6 +249,65 @@ const (
     SetDefault string = "SET DEFAULT"
 )
 
+var ArtistsTable = BaseTable {
+    name: "artists",
+    primaryKey: IDField{ name: "id", null: false, primaryKey: true },
+    fields: []Field {
+        IDField{ name: "id", null: false, primaryKey: true },
+    },
+}
+
+var AlbumsTable = BaseTable {
+    name: "album",
+    primaryKey: IDField{ name: "id", null: false, primaryKey: true },
+    fields: []Field {
+        IDField{ name: "id", null: false, primaryKey: true },
+        IDField{ name: "artist", null: true, foreignKey: true, foreignKeyRef: ArtistsTable }, 
+    },
+}
+
+var TracksTable = BaseTable {
+    name: "tracks",
+    primaryKey: IDField { name: "id", null: false, primaryKey: true },
+    fields: []Field {
+        IDField{ name: "id", null: false, primaryKey: true },
+        TextField{ name: "title", null: false },
+        TextField{ name: "uri_name", null: false },
+        TextField{ name: "path", null: false },
+        IDField{ name: "artist", null: false, foreignKey: true, foreignKeyRef: ArtistsTable },
+        IDField{ name: "album", null: false, foreignKey: true, foreignKeyRef: AlbumsTable },
+        IntegerField{ name: "track_number", null: false, hasDefault: true, defaultValue: 1 },
+        IntegerField{ name: "disk_number", null: false, hasDefault: true, defaultValue: 1 },
+    },
+}
+
+var PlaylistsTable = BaseTable {
+    name: "playlists",
+    primaryKey: IDField { name: "id", null: false, primaryKey: true },
+    fields: []Field {
+        IDField { name: "id", null: false, primaryKey: true },
+        TextField { name: "title", null: false },
+        TextField { name: "description", null: false, hasDefault: true, defaultValue: "A new playlist." },
+    },
+}
+
+var PlaylistTracksTable = JunctionTable {
+    name: "playlist_tracks",
+    referenceTables: []Table {
+        PlaylistsTable,
+        TracksTable,
+    },
+}
+
+var Tables = []Table {
+    ArtistsTable,
+    AlbumsTable,
+    TracksTable,
+    PlaylistsTable,
+    PlaylistTracksTable,
+}
+
+
 func init() {
 	log.Printf("Connecting to Postgres...")
 	var err error
@@ -216,34 +323,12 @@ func init() {
 	}
 	log.Println("Connected to Postgres!")
     log.Println("Creating tables...")
-    artists := BaseTable{
-        name: "artists",
-        primaryKey: IDField{ name: "id", null: false, primaryKey: true },
-        fields: []Field{
-            IDField{ name: "id", null: false, primaryKey: true },
-        },
-    }
-    err = artists.Create()
-    if err != nil {
-        log.Fatalf("Failed to spin up tables: %w", err)
-    }
-
-    tracks := BaseTable{
-        name: "tracks",
-        primaryKey: IDField{},
-        fields: []Field{
-            IDField{ name: "id", null: false, primaryKey: true},
-            TextField{ name: "title", null: false },
-            TextField{ name: "uri_name", null: false },
-            TextField{ name: "path", null: false },
-            IDField{ name: "artist", null: false, foreignKey: true, foreignKeyRef: artists },
-            IntegerField{ name: "track_number", null: false, hasDefault: true, defaultValue: 1 },
-            IntegerField{ name: "disk_number", null: false, hasDefault: true, defaultValue: 1 },
-        },
-    }
-    err = tracks.Create()
-    if err != nil {
-        log.Fatalf("Failed to spin up tables: %w", err)
+    for _, table := range Tables {
+        log.Printf("Creating table '%v'...", table.Name())
+        err = table.Create()
+        if err != nil {
+            log.Fatalf("Failed to spin up tables: %w", err)
+        }
     }
     log.Println("Created tables!")
 }

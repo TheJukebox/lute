@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// OnDelete types
 const (
     Cascade string = "CASCADE"
     SetNull string = "SET NULL"
@@ -15,6 +16,7 @@ const (
     SetDefault string = "SET DEFAULT"
 )
 
+// Model Fields
 type Field interface {
     Name() string
     Type() any
@@ -153,7 +155,7 @@ func (f IDField) ForeignKey(onDelete string) string {
     return ""
 }
 
-
+// Table models
 type Table interface {
     Name() string 
     PrimaryKey() Field
@@ -245,3 +247,33 @@ func (t BaseTable) Create() error {
     return err
 }
 
+// Request and response types
+type UploadRequest struct {
+    Name string `json:"name"`
+    UriName string `json:"uriName"`
+    ContentType string `json:"contentType"`
+    Artist string
+    Album string
+    TrackNumber int
+    DiskNumber int
+}
+
+type PresignedUploadResponse struct {
+    URL string `json:"url"`
+    Fields map[string]string `json:"fields"`
+}
+
+type TrackResponse struct {
+    Id uuid.UUID `json:"id"`
+    Title string `json:"title"`
+    UriName string `json:"uriName"`
+    Path string `json:"path"`
+    Artist Artist `json:"artist"`
+    Album Album `json:"album"`
+    TrackNumber int `json:"trackNumber"`
+    DiskNumber int `json:"diskNumber"`
+}
+
+type TracksResponse struct {
+	Tracks []TrackResponse `json:"tracks"`
+}

@@ -3,10 +3,12 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -44,23 +46,116 @@ var mimeToExtension = map[string]string {
     "audio/wav": ".wav",
 }
 
-type UploadRequest struct {
-    Name string `json:"name"`
-    UriName string `json:"uriName"`
-    ContentType string `json:"contentType"`
-    Artist string
-    Album string
-    TrackNumber int
-    DiskNumber int
+func AllArtists() ([]Artist, error) {
+	query := `
+		SELECT id, name FROM artists;		
+	`
+	rows, err := pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+	}
+	var artists []Artist
+	for rows.Next() {
+		var artist Artist
+		err = rows.Scan(&artist.ID, &artist.Name)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+		}
+		artists = append(artists, artist)
+	}
+	return artists, rows.Err()
 }
 
-type PresignedUploadResponse struct {
-    URL string `json:"url"`
-    Fields map[string]string `json:"fields"`
+func ArtistByName(name string) (Artist, error) {
+    query := `
+        SELECT id, name FROM artists WHERE name = $1;
+    `
+    artist := Artist{}
+    err := pool.QueryRow(ctx, query, name).Scan(&artist.ID, &artist.Name)
+    return artist, err
 }
 
-type TracksResponse struct {
-	Tracks []Track `json:"tracks"`
+func ArtistByID(id string) (Artist, error) {
+    query := `
+        SELECT id, name FROM artists WHERE id = $1;
+    `
+    artist := Artist{}
+    err := pool.QueryRow(ctx, query, id).Scan(&artist.ID, &artist.Name)
+    return artist, err
+}
+
+func AlbumByTitle(title string, artist uuid.UUID) (Album, error) {
+    query := `
+        SELECT id, title, artist FROM albums WHERE title = $1 and artist = $2;
+    `
+    album := Album{}
+    err := pool.QueryRow(ctx, query, title, artist).Scan(&album.ID, &album.Title, &album.Artist)
+    return album, err
+}
+
+func AlbumByID(id string) (Album, error) {
+    query := `
+        SELECT id, title, artist FROM albums WHERE id = $1;
+    `
+    album := Album{}
+    err := pool.QueryRow(ctx, query, id).Scan(&album.ID, &album.Title, &album.Artist)
+    return album, err
+}
+
+func AllTracks() ([]TrackResponse, error) {
+	query := `
+		SELECT id, title, uri_name, path, artist, album, track_number, disk_number FROM tracks;		
+	`
+	rows, err := pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+	}
+	var tracks []Track
+	for rows.Next() {
+		var track Track
+		err = rows.Scan(&track.ID, &track.Title, &track.UriName, &track.Path, &track.Artist, &track.Album, &track.TrackNumber, &track.DiskNumber)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+		}
+		tracks = append(tracks, track)
+	}
+    response := make([]TrackResponse, len(tracks))
+    for i, track := range tracks {
+        artist, _ := ArtistByID(track.Artist.String())
+        album, _ := AlbumByID(track.Album.String())
+        response[i] = TrackResponse {
+            Id: track.ID,
+            Title: track.Title,
+            UriName: track.UriName,
+            Path: track.Path,
+            Artist: artist,
+            Album: album,
+            TrackNumber: track.TrackNumber,
+            DiskNumber: track.DiskNumber,
+        }
+    }
+	return response, rows.Err()
+}
+
+func findExistingArtistByName(name string) Artist {
+    artist, err := ArtistByName(name)
+    if err != nil && err == pgx.ErrNoRows {
+        log.Printf("No artist '%v' exists currently. Creating...", name)
+        artist.Name = name
+        artist.Create()
+    }
+    return artist
+}
+
+func findExistingAlbum(title string, artistID uuid.UUID) (Album) {
+    album, err := AlbumByTitle(title, artistID)
+    if err != nil && err == pgx.ErrNoRows {
+        log.Printf("No album '%v' by '%v' exists currently. Creating...", title, artistID)
+        album.Title = title
+        album.Artist = artistID
+        album.Create()
+    }
+    return album
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +184,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
         contentType := body.ContentType
         ext, _ := mimeToExtension[body.ContentType]
         path := body.UriName + ext
-        artist := body.Artist
-        album := body.Album
+        artistName := body.Artist
+        albumName := body.Album
         number := body.TrackNumber
         disk := body.DiskNumber
 
@@ -102,8 +197,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
         policy.SetExpires(time.Now().UTC().Add(expiry))
         policy.SetContentType(contentType)
         policy.SetUserMetadata("name", name)
-        policy.SetUserMetadata("artist", artist)
-        policy.SetUserMetadata("album", album)
+        policy.SetUserMetadata("artist", artistName)
+        policy.SetUserMetadata("album", albumName)
 
         presignedURL, formData, err := MinioClient.PresignedPostPolicy(context.Background(), policy)
         if err != nil {
@@ -125,31 +220,15 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        var artistRow Artist
-        artistRow, err = ArtistByName(artist)
-        if err == pgx.ErrNoRows {
-            artistRow = Artist {
-                Name: artist,
-            }
-        }
-        artistRow.Create()
-
-        var albumRow Album
-        albumRow, err = AlbumByName(album)
-        if err == pgx.ErrNoRows {
-            albumRow = Album {
-                Title: album,
-                Artist: artistRow.ID,
-            }
-        }
-        albumRow.Create()
+        artist := findExistingArtistByName(artistName)
+        album := findExistingAlbum(albumName, artist.ID)
 
 		track := Track {
-			Name: name,
+			Title: name,
 			UriName: uriName,
 			Path: path,
-            Artist: artistRow.ID,
-            Album: albumRow.ID,
+            Artist: artist.ID,
+            Album: album.ID,
             TrackNumber: number,
             DiskNumber: disk,
 		}

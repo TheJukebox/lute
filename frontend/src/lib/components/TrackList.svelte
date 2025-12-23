@@ -8,10 +8,10 @@
 
 
     async function playTrack(track: Track) {
-        trackList.nowPlaying = track.ID;
+        trackList.nowPlaying = track.id;
         trackList.currentTrack = track; 
         const ws: WebSocket = new WebSocket(
-            `ws://localhost:7001/stream?track=${encodeURIComponent(track.Path)}`
+            `ws://localhost:7001/stream?track=${encodeURIComponent(track.path)}`
         );
         ws.onopen = () => {
             console.debug("Websocket open.")
@@ -68,10 +68,10 @@
                     onclick={() => playTrack(track)}
                     type="button"
                 >
-                    <div>{track.Number}</div>
-                    <div>{track.Name}</div>
-                    <div>{track.Artist}</div>
-                    <div>{track.Album}</div>
+                    <div>{track.trackNumber}</div>
+                    <div>{track.title}</div>
+                    <div>{track.artist.Name}</div>
+                    <div>{track.album.Title}</div>
                 </button>
             {/each}
         </div>

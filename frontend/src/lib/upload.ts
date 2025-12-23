@@ -1,15 +1,15 @@
 import { fetchTracks } from '$lib/tracklist.svelte';
 
 export interface Track {
-    Name: string;
-    UriName: string;
-    ContentType: string;
-    Artist: string;
-    Date: string;
-    Release: string;
-    Album: string;
-    Number: number;
-    Disk: number;
+    name: string;
+    uriName: string;
+    contentType: string;
+    artist: string;
+    date: string;
+    release: string;
+    album: string;
+    number: number;
+    disk: number;
 }
 
 export interface PresignedUrl {

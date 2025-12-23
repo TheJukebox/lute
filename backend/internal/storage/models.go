@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -158,7 +157,7 @@ func (obj *Album) Create() error {
 
 type Track struct {
     ID uuid.UUID
-    Name string
+    Title string
     UriName string
     Path string
     Artist uuid.UUID 
@@ -173,70 +172,12 @@ func (obj *Track) Create() error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, title, uri_name, path, artist, album, track_number, disk_number;
 	`
-	row := pool.QueryRow(ctx, query, obj.Name, obj.UriName, obj.Path, obj.Artist, obj.Album, obj.TrackNumber, obj.DiskNumber)
-    row.Scan(&obj.ID, &obj.Name, &obj.UriName, &obj.Path, &obj.Artist, &obj.Album, &obj.TrackNumber, &obj.DiskNumber)
+	row := pool.QueryRow(ctx, query, obj.Title, obj.UriName, obj.Path, obj.Artist, obj.Album, obj.TrackNumber, obj.DiskNumber)
+    row.Scan(&obj.ID, &obj.Title, &obj.UriName, &obj.Path, &obj.Artist, &obj.Album, &obj.TrackNumber, &obj.DiskNumber)
 	return nil
 }
 
-func AllTracks() ([]Track, error) {
-	query := `
-		SELECT id, title, uri_name, path, artist, album, track_number, disk_number FROM tracks;		
-	`
-	rows, err := pool.Query(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
-	}
-	var tracks []Track
-	for rows.Next() {
-		var track Track
-		err = rows.Scan(&track.ID, &track.Name, &track.UriName, &track.Path, &track.Artist, &track.Album, &track.TrackNumber, &track.DiskNumber)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
-		}
-		tracks = append(tracks, track)
-	}
-	return tracks, rows.Err()
-}
 
-func AllArtists() ([]Artist, error) {
-	query := `
-		SELECT id, name FROM artists;		
-	`
-	rows, err := pool.Query(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
-	}
-	var artists []Artist
-	for rows.Next() {
-		var artist Artist
-		err = rows.Scan(&artist.ID, &artist.Name)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
-		}
-		artists = append(artists, artist)
-	}
-	return artists, rows.Err()
-}
-
-func ArtistByName(name string) (Artist, error) {
-    query := `
-        SELECT id, name FROM artists WHERE name = $1;
-    `
-    row := pool.QueryRow(ctx, query, name)
-    artist := Artist{}
-    err := row.Scan(&artist.ID, &artist.Name)
-    return artist, err
-}
-
-func AlbumByName(name string) (Album, error) {
-    query := `
-        SELECT id, title FROM albums WHERE title = $1;
-    `
-    row := pool.QueryRow(ctx, query, name)
-    album := Album{}
-    err := row.Scan(&album.ID, &album.Title)
-    return album, err
-}
 
 // working on this concept, but i dont think its needed yet
 // type Track struct {

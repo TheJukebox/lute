@@ -48,15 +48,15 @@
                 uploadName = name;
 
                 const track: Track = {
-                    Name: name,
-                    UriName: encodeURIComponent(`${artist}/${album}/${name}`),
-                    ContentType: file.type,
-                    Artist: artist,
-                    Album: album,
-                    Date: date,
-                    Release: release,
-                    Number: number,
-                    Disk: disk,
+                    name: name,
+                    uriName: encodeURIComponent(`${artist}/${album}/${name}`),
+                    contentType: file.type,
+                    artist: artist,
+                    album: album,
+                    date: date,
+                    release: release,
+                    trackNumber: number,
+                    diskNumber: disk,
                 };
                 console.debug(`Uploading track: ${JSON.stringify(track)}`);
                 uploadTrack(track, file);

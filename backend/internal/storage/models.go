@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,258 +10,47 @@ import (
 
 var pool *pgxpool.Pool
 
-type Field interface {
-    Name() string
-    Type() any
-    Value() any
-    Default() any
-    Null() string 
-    PrimaryKey() string
-    ForeignKey(onDelete string) string
-}
-
-type IntegerField struct {
-    name string
-    value int 
-    hasDefault bool
-    defaultValue int
-    null bool 
-    primaryKey bool
-    foreignKey bool
-    foreignKeyRef Table
-}
-func (f IntegerField) Name() string { return f.name }
-func (f IntegerField) Type() any { return "INTEGER" }
-func (f IntegerField) Value() any { return f.value }
-func (f IntegerField) Default() any { 
-    if f.hasDefault {
-       return fmt.Sprintf("DEFAULT %d", f.defaultValue)
-    }
-    return ""
-}
-func (f IntegerField) PrimaryKey() string {
-    if f.primaryKey {
-        return "PRIMARY KEY"
-    } else {
-        return ""
-    }
-}
-func (f IntegerField) Null() string { 
-    if f.null {
-        return "NULL"
-    } else {
-        return "NOT NULL"
-    }
-}
-func (f IntegerField) ForeignKey(onDelete string) string {
-    if f.foreignKey {
-        return fmt.Sprintf(
-            "REFERENCES %v(%v) ON DELETE %v",
-            f.foreignKeyRef.Name(),
-            f.foreignKeyRef.PrimaryKey().Name(),
-            onDelete,
-        )
-    }
-    return ""
-}
-
-type TextField struct {
-    name string
-    value string
-    hasDefault bool
-    defaultValue string
-    null bool 
-    primaryKey bool
-    foreignKey bool
-    foreignKeyRef Table
-}
-
-func (f TextField) Name() string { return f.name }
-func (f TextField) Type() any { return "VARCHAR" }
-func (f TextField) Value() any { return f.value }
-func (f TextField) Default() any { 
-    if f.hasDefault {
-       return "DEFAULT '" + f.defaultValue + "'" 
-    }
-    return ""
-}
-func (f TextField) PrimaryKey() string {
-    if f.primaryKey {
-        return "PRIMARY KEY"
-    } else {
-        return ""
-    }
-}
-func (f TextField) Null() string { 
-    if f.null {
-        return "NULL"
-    } else {
-        return "NOT NULL"
-    }
-}
-func (f TextField) ForeignKey(onDelete string) string {
-    if f.foreignKey {
-        return fmt.Sprintf(
-            "REFERENCES %v(%v) ON DELETE %v",
-            f.foreignKeyRef.Name(),
-            f.foreignKeyRef.PrimaryKey().Name(),
-            onDelete,
-        )
-    }
-    return ""
-}
-
-type IDField struct {
-    name string
-    value uuid.UUID 
-    primaryKey bool
-    foreignKey bool
-    foreignKeyRef Table
-    null bool
-}
-
-func (f IDField) Name() string { return f.name }
-func (f IDField) Type() any { return "UUID" }
-func (f IDField) Value() any { return f.value }
-func (f IDField) Default() any { 
-    if !f.foreignKey {
-        return "DEFAULT gen_random_uuid()"
-    }
-    return ""
-}
-func (f IDField) PrimaryKey() string {
-    if f.primaryKey {
-        return "PRIMARY KEY"
-    }
-    return ""
-}
-func (f IDField) Null() string { return "NOT NULL" }
-func (f IDField) ForeignKey(onDelete string) string {
-    if f.foreignKey {
-        return fmt.Sprintf(
-            "REFERENCES %v(%v) ON DELETE %v",
-            f.foreignKeyRef.Name(),
-            f.foreignKeyRef.PrimaryKey().Name(),
-            onDelete, 
-        )
-    }
-    return ""
-}
-
-
-type Table interface {
-    Name() string 
-    PrimaryKey() Field
-    Fields() []Field
-    Create() error
-}
-
-type JunctionTable struct {
-    name string
-    primaryKey Field
-    referenceTables []Table
-    fields []Field
-}
-
-func (t JunctionTable) Name() string { return t.name }
-func (t JunctionTable) Fields() []Field { return t.fields }
-func (t JunctionTable) PrimaryKey() Field { return t.primaryKey }
-func (t JunctionTable) Create() error {
-    queryBase := `
-        CREATE TABLE IF NOT EXISTS %v
-        (%v, PRIMARY KEY (%v));
-    `
-    referenceTables := t.referenceTables
-    // we need to set up the referenceTables here
-    // as sql entries
-    fieldStrings := make([]string, len(referenceTables))
-    pkeys := make([]string, len(referenceTables))
-    for i, table := range referenceTables {
-        fieldString := fmt.Sprintf(
-            "%v_id %v REFERENCES %v(%v) ON DELETE CASCADE",
-            table.Name(),
-            table.PrimaryKey().Type(),
-            table.Name(),
-            table.PrimaryKey().Name(),
-        )
-        fieldStrings[i] = fieldString
-        pkeys[i] = fmt.Sprintf("%v_id", table.Name()) 
-        t.fields = append(
-            t.fields, 
-            IDField { name: fmt.Sprintf("%v_id", table.Name()), foreignKey: true, foreignKeyRef: table },
-        )
-    }
-    t.primaryKey = IDField {
-        name: fmt.Sprintf("pkey_%v", t.name),
-    }
-    query := fmt.Sprintf(
-        queryBase,
-        t.name,
-        strings.Join(fieldStrings, ", "),
-        strings.Join(pkeys, ", "),
-    )
-    _, err := pool.Exec(ctx, query)
-    return err
-}
-
-type BaseTable struct {
-    name string
-    primaryKey Field
-    fields []Field
-}
-
-func (t BaseTable) Name() string { return t.name }
-func (t BaseTable) Fields() []Field { return t.fields }
-func (t BaseTable) PrimaryKey() Field { return t.primaryKey }
-func (t BaseTable) Create() error {
-    queryBase := `
-        CREATE TABLE IF NOT EXISTS %v
-        (%v);
-    `
-    fields := t.Fields()
-    if len(fields) == 0 {
-        return fmt.Errorf("Table has no configured fields (%d)", len(fields))
-    }
-    fieldStrings := make([]string, len(fields))
-    for i, field := range t.Fields() {
-        fieldString := fmt.Sprintf(
-            "%v %v %v %v %v %v",
-            field.Name(),
-            field.Type(),
-            field.ForeignKey("CASCADE"),
-            field.PrimaryKey(),
-            field.Default(),
-            field.Null(),
-        )
-        fieldStrings[i] = strings.TrimSpace(fieldString)
-    }
-    query := fmt.Sprintf(queryBase, t.Name(), strings.Join(fieldStrings, ", ")) 
-    _, err := pool.Exec(ctx, query)
-    return err
-}
-
-const (
-    Cascade string = "CASCADE"
-    SetNull string = "SET NULL"
-    Restrict string = "RESTRICT"
-    NoAction string = "NO ACTION"
-    SetDefault string = "SET DEFAULT"
-)
-
 var ArtistsTable = BaseTable {
     name: "artists",
     primaryKey: IDField{ name: "id", null: false, primaryKey: true },
     fields: []Field {
         IDField{ name: "id", null: false, primaryKey: true },
+        TextField{ name: "name", null: false, hasDefault: true, defaultValue: "Unknown" },
     },
 }
 
 var AlbumsTable = BaseTable {
-    name: "album",
+    name: "albums",
     primaryKey: IDField{ name: "id", null: false, primaryKey: true },
     fields: []Field {
         IDField{ name: "id", null: false, primaryKey: true },
         IDField{ name: "artist", null: true, foreignKey: true, foreignKeyRef: ArtistsTable }, 
+        TextField{ name: "title", null: false, hasDefault: true, defaultValue: "Unknown" },
+    },
+}
+
+
+var AlbumTracks = JunctionTable {
+    name: "album_tracks",
+    referenceTables: []Table {
+        AlbumsTable,
+        TracksTable,
+    },
+}
+
+var ArtistAlbums = JunctionTable {
+    name: "artist_albums",
+    referenceTables: []Table {
+        ArtistsTable,
+        AlbumsTable,
+    },
+}
+
+var ArtistTracks = JunctionTable {
+    name: "artist_tracks",
+    referenceTables: []Table {
+        ArtistsTable,
+        TracksTable,
     },
 }
 
@@ -305,8 +93,10 @@ var Tables = []Table {
     TracksTable,
     PlaylistsTable,
     PlaylistTracksTable,
+    ArtistAlbums,
+    AlbumTracks,
+    ArtistTracks,
 }
-
 
 func init() {
 	log.Printf("Connecting to Postgres...")
@@ -333,32 +123,64 @@ func init() {
     log.Println("Created tables!")
 }
 
-type Track struct {
-	ID uuid.UUID 
-	Name string 
-	UriName string 
-	Path string 
-    Artist string 
-    Album string 
-    TrackNumber int 
-    DiskNumber int 
+type Artist struct {
+   ID uuid.UUID
+   Name string
 }
 
-func (obj Track) Create() error {
+func (obj *Artist) Create() error {
+    query := `
+        INSERT INTO artists (name)
+        VALUES ($1)
+        RETURNING id, name;
+    `
+    row := pool.QueryRow(ctx, query, obj.Name)
+    row.Scan(&obj.ID, &obj.Name)
+    return nil
+}
+
+type Album struct {
+    ID uuid.UUID
+    Title string
+    Artist uuid.UUID
+}
+
+func (obj *Album) Create() error {
+    query := `
+        INSERT INTO albums (title, artist)
+        VALUES ($1, $2)
+        RETURNING id, title, artist;
+    `
+    row := pool.QueryRow(ctx, query, obj.Title, obj.Artist)
+    row.Scan(&obj.ID, &obj.Title, &obj.Artist)
+    return nil
+}
+
+type Track struct {
+    ID uuid.UUID
+    Name string
+    UriName string
+    Path string
+    Artist uuid.UUID 
+    Album uuid.UUID 
+    TrackNumber int
+    DiskNumber int
+}
+
+func (obj *Track) Create() error {
 	query := `
-		insert into tracks (name, uri_name, path, artist, album, track_number, disk_number)
-		values ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO tracks (title, uri_name, path, artist, album, track_number, disk_number)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, title, uri_name, path, artist, album, track_number, disk_number;
 	`
-	err := pool.QueryRow(ctx, query, obj.Name, obj.UriName, obj.Path, obj.Artist, obj.Album, obj.TrackNumber, obj.DiskNumber)
-	if err != nil {
-		return fmt.Errorf("Failed to create Track object: %w", err)
-	}
+	row := pool.QueryRow(ctx, query, obj.Name, obj.UriName, obj.Path, obj.Artist, obj.Album, obj.TrackNumber, obj.DiskNumber)
+    row.Scan(&obj.ID, &obj.Name, &obj.UriName, &obj.Path, &obj.Artist, &obj.Album, &obj.TrackNumber, &obj.DiskNumber)
 	return nil
 }
 
 func AllTracks() ([]Track, error) {
 	query := `
-		SELECT id, name, uri_name, path, artist, album, number, disk FROM tracks;		
+		SELECT id, title, uri_name, path, artist, album, track_number, disk_number FROM tracks;		
 	`
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
@@ -375,3 +197,88 @@ func AllTracks() ([]Track, error) {
 	}
 	return tracks, rows.Err()
 }
+
+func AllArtists() ([]Artist, error) {
+	query := `
+		SELECT id, name FROM artists;		
+	`
+	rows, err := pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+	}
+	var artists []Artist
+	for rows.Next() {
+		var artist Artist
+		err = rows.Scan(&artist.ID, &artist.Name)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+		}
+		artists = append(artists, artist)
+	}
+	return artists, rows.Err()
+}
+
+func ArtistByName(name string) (Artist, error) {
+    query := `
+        SELECT id, name FROM artists WHERE name = $1;
+    `
+    row := pool.QueryRow(ctx, query, name)
+    artist := Artist{}
+    err := row.Scan(&artist.ID, &artist.Name)
+    return artist, err
+}
+
+func AlbumByName(name string) (Album, error) {
+    query := `
+        SELECT id, title FROM albums WHERE title = $1;
+    `
+    row := pool.QueryRow(ctx, query, name)
+    album := Album{}
+    err := row.Scan(&album.ID, &album.Title)
+    return album, err
+}
+
+// working on this concept, but i dont think its needed yet
+// type Track struct {
+// 	ID IDField 
+// 	Name TextField 
+// 	UriName TextField 
+// 	Path TextField
+//     Artist TextField
+//     Album TextField
+//     TrackNumber IntegerField
+//     DiskNumber IntegerField
+// }
+// func (t Track) Fields() []Field {
+//     return []Field {
+//         t.ID,
+//         t.Name,
+//         t.UriName,
+//         t.Path,
+//         t.Artist,
+//         t.Album,
+//         t.TrackNumber,
+//         t.DiskNumber,
+//     }
+// }
+// func Insert(row Row, table Table) error {
+//     columnString := make([]string, len(table.Fields()))
+//     for i, field := range table.Fields() {
+//         columnString[i] = field.Name()
+//     }
+// 
+//     valueString := make([]string, len(row.Fields()))
+//     values := make([]string, len(row.Fields()))
+//     for i, field = range row.Fields() {
+//         valueString[i] = fmt.Sprintf("$%v", i)
+//         values[i] = field.Value()
+//     }
+//     valueString = strings.Join(valueString, ", ")
+//     query := `
+//         INSERT INTO %v (%v)
+//         VALUES (%v);
+//     `
+//     query = fmt.Sprintf(query, table.Name(), columnString, valueString)
+//     _, err := pool.QueryRow(ctx, query, values...)
+//     return err 
+// } 

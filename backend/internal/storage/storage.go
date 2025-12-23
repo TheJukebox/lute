@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -124,12 +125,31 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        var artistRow Artist
+        artistRow, err = ArtistByName(artist)
+        if err == pgx.ErrNoRows {
+            artistRow = Artist {
+                Name: artist,
+            }
+        }
+        artistRow.Create()
+
+        var albumRow Album
+        albumRow, err = AlbumByName(album)
+        if err == pgx.ErrNoRows {
+            albumRow = Album {
+                Title: album,
+                Artist: artistRow.ID,
+            }
+        }
+        albumRow.Create()
+
 		track := Track {
 			Name: name,
 			UriName: uriName,
 			Path: path,
-            Artist: artist,
-            Album: album,
+            Artist: artistRow.ID,
+            Album: albumRow.ID,
             TrackNumber: number,
             DiskNumber: disk,
 		}

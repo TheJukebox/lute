@@ -102,6 +102,80 @@ func AlbumByID(id string) (Album, error) {
     return album, err
 }
 
+func TracksByArtist(id string) ([]TrackResponse, error) {
+
+    query := `
+        SELECT id, title, uri_name, path, artist, album, track_number, disk_number
+        FROM tracks WHERE artist = $1;
+    `
+    rows, err := pool.Query(ctx, query, id)
+    if err != nil {
+        return nil, fmt.Errorf("Failed to gather tracks for artist '%v'", id)
+    }
+    var tracks []Track
+    for rows.Next() {
+        var track Track
+		err = rows.Scan(&track.ID, &track.Title, &track.UriName, &track.Path, &track.Artist, &track.Album, &track.TrackNumber, &track.DiskNumber)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+		}
+		tracks = append(tracks, track)
+    }
+    response := make([]TrackResponse, len(tracks))
+    for i, track := range tracks {
+        artist, _ := ArtistByID(track.Artist.String())
+        album, _ := AlbumByID(track.Album.String())
+        response[i] = TrackResponse {
+            Id: track.ID,
+            Title: track.Title,
+            UriName: track.UriName,
+            Path: track.Path,
+            Artist: artist,
+            Album: album,
+            TrackNumber: track.TrackNumber,
+            DiskNumber: track.DiskNumber,
+        }
+    }
+	return response, rows.Err()
+}
+
+func TracksByAlbum(id string) ([]TrackResponse, error) {
+
+    query := `
+        SELECT id, title, uri_name, path, artist, album, track_number, disk_number
+        FROM tracks WHERE album = $1;
+    `
+    rows, err := pool.Query(ctx, query, id)
+    if err != nil {
+        return nil, fmt.Errorf("Failed to gather tracks for artist '%v'", id)
+    }
+    var tracks []Track
+    for rows.Next() {
+        var track Track
+		err = rows.Scan(&track.ID, &track.Title, &track.UriName, &track.Path, &track.Artist, &track.Album, &track.TrackNumber, &track.DiskNumber)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+		}
+		tracks = append(tracks, track)
+    }
+    response := make([]TrackResponse, len(tracks))
+    for i, track := range tracks {
+        artist, _ := ArtistByID(track.Artist.String())
+        album, _ := AlbumByID(track.Album.String())
+        response[i] = TrackResponse {
+            Id: track.ID,
+            Title: track.Title,
+            UriName: track.UriName,
+            Path: track.Path,
+            Artist: artist,
+            Album: album,
+            TrackNumber: track.TrackNumber,
+            DiskNumber: track.DiskNumber,
+        }
+    }
+	return response, rows.Err()
+}
+
 func AllTracks() ([]TrackResponse, error) {
 	query := `
 		SELECT id, title, uri_name, path, artist, album, track_number, disk_number FROM tracks;		
@@ -238,11 +312,21 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 func Tracks(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		tracks, err := AllTracks()	
-		if err != nil {
-			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
-			return
-		}
+        artistID := r.URL.Query().Get("artist")
+        albumID := r.URL.Query().Get("album")
+        var tracks []TrackResponse
+        var err error
+        if albumID != "" {
+            tracks, err = TracksByAlbum(albumID)
+        } else if artistID != "" {
+            tracks, err = TracksByArtist(artistID)
+        } else {
+            tracks, err = AllTracks()	
+            if err != nil {
+                http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+                return
+            }
+        }
 		response := TracksResponse {
 			Tracks: tracks,
 		}

@@ -152,6 +152,12 @@ func (obj *Album) Create() error {
     `
     row := pool.QueryRow(ctx, query, obj.Title, obj.Artist)
     row.Scan(&obj.ID, &obj.Title, &obj.Artist)
+
+    query = `
+        INSERT INTO artist_albums (albums_id, artists_id)
+        VALUES ($1, $2);
+    `
+    _ = pool.QueryRow(ctx, query, obj.ID, obj.Artist)
     return nil
 }
 
@@ -174,6 +180,17 @@ func (obj *Track) Create() error {
 	`
 	row := pool.QueryRow(ctx, query, obj.Title, obj.UriName, obj.Path, obj.Artist, obj.Album, obj.TrackNumber, obj.DiskNumber)
     row.Scan(&obj.ID, &obj.Title, &obj.UriName, &obj.Path, &obj.Artist, &obj.Album, &obj.TrackNumber, &obj.DiskNumber)
+
+    query = `
+        INSERT INTO artist_tracks (tracks_id, artists_id)
+        VALUES ($1, $2);
+    `
+    _ = pool.QueryRow(ctx, query, obj.ID, obj.Artist)
+    query = `
+        INSERT INTO album_tracks (tracks_id, albums_id)
+        VALUES ($1, $2);
+    `
+    _ = pool.QueryRow(ctx, query, obj.ID, obj.Album)
 	return nil
 }
 

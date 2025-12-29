@@ -8,8 +8,8 @@ export interface Track {
     date: string;
     release: string;
     album: string;
-    number: number;
-    disk: number;
+    trackNumber: number;
+    diskNumber: number;
 }
 
 export interface PresignedUrl {

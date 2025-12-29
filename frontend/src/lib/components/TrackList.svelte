@@ -4,8 +4,8 @@
     import { type Track } from '$lib/upload';
     import { type StreamChunk, StreamBuffer } from '$lib/stream';
     import { trackList, fetchTracks, fetchArtistTracks, fetchAlbumTracks } from '$lib/tracklist.svelte';
-    import { startPlayback, playback } from '$lib/playback.svelte'; 
-
+    import { startPlayback, playback, stopPlayback } from '$lib/playback.svelte'; 
+    import { LoaderCircle } from '@lucide/svelte';
 
     async function playTrack(track: Track) {
         trackList.nowPlaying = track.id;
@@ -45,83 +45,70 @@
     };
 
     onMount(() => {
-        fetchTracks();
     });
 </script>
 
-<div class="p-4 shadow rounded-lg bg-lime-50">
-    <a class="text-lime-600 font-bold hover:cursor-pointer" href="/library" onclick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        fetchTracks();
-        trackList.currentArtist = "";
-        trackList.currentAlbum = "";
-    }}>
-        Library
-    </a>
-    {#if trackList.currentArtist && trackList.currentAlbum }
-        <a class="text-lime-600 font-bold hover:cursor-pointer" href="/library" onclick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            fetchArtistTracks();
-            trackList.currentArtist = "";
-        }}>
-            > {trackList.currentArtist} 
-        </a>
-        <span class="font-semibold text-lime-600">> {trackList.currentAlbum}</span>
-    {:else if trackList.currentArtist }
-        <span class="text-lime-600">> {trackList.currentArtist}</span>
-    {/if}
-</div>
-<div class="p-4 shadow rounded-xl bg-lime-50 min-h-80 flex flex-col gap-2 overflow-x-clip h-full max-h-320 transition scroll-smooth">
+<div class="p-2 shadow rounded-xl bg-lime-50 min-w-full min-h-80 flex flex-col gap-2 overflow-x-clip h-full max-h-320 transition scroll-smooth">
         <div class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full text-lime-600 font-semibold rounded-full bg-lime-200 shadow">
             <div>No.</div>
             <div>Track</div>
             <div>Artist</div>
             <div>Album</div>
         </div>
-        {#if trackList.loading}
-            <div class="flex flex-1 justify-center items-center max-w-full max-h-full text-xl">
-                Loading...
+        {#if trackList.loading }
+        <div class="shadow rounded-xl bg-lime-100 overflow-y-auto overflow-x-clip">
+            <div
+                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
+            >
+                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
             </div>
+            <div
+                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
+            >
+                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+            </div>
+            <div
+                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
+            >
+                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+            </div>
+            <div
+                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
+            >
+                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
+            </div>
+        </div>
+            <div class="flex flex-1 justify-center p-5"><LoaderCircle size="96" class="animate-spin text-lime-400"/></div>
         {:else}
         <div class="shadow rounded-xl bg-lime-100 overflow-y-auto overflow-x-clip">
             {#each trackList.tracks as track}
                 <button 
-                    class={`grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition ${trackStyle(track.ID)}`}
-                    onclick={() => playTrack(track)}
+                    class={`grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition ${trackStyle(track.id)}`}
+                    onclick={() => {
+                        stopPlayback();
+                        playTrack(track);
+                    }}
                     type="button"
                 >
                     <div>{track.trackNumber}</div>
                     <div>{track.title}</div>
                     <div>
-                        <a
-                            class="hover:text-green-600"
-                            href={`?artist=${track.artist.Name}`}
-                            onclick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                fetchArtistTracks(track.artist.ID);
-                                trackList.currentArtist = track.artist.Name;
-                            }}
-                        >
-                            {track.artist.Name}
-                        </a>
+                        {track.artist.Name}
                     </div>
                     <div>
-                        <a
-                            class="hover:text-green-600"
-                            href={`?album=${track.album.Title}`}
-                            onclick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                fetchAlbumTracks(track.album.ID);
-                                trackList.currentArtist = track.artist.Name;
-                                trackList.currentAlbum = track.album.Title;
-                            }}
-                        >
-                            {track.album.Title}
-                        </a>
+                        {track.album.Title}
                     </div>
                 </button>
             {/each}

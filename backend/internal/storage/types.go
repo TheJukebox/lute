@@ -252,10 +252,10 @@ type UploadRequest struct {
     Name string `json:"name"`
     UriName string `json:"uriName"`
     ContentType string `json:"contentType"`
-    Artist string
-    Album string
-    TrackNumber int
-    DiskNumber int
+    Artist string `json:"artist"`
+    Album string `json:"album"`
+    TrackNumber int `json:"trackNumber"`
+    DiskNumber int `json:"diskNumber"`
 }
 
 type PresignedUploadResponse struct {
@@ -276,4 +276,13 @@ type TrackResponse struct {
 
 type TracksResponse struct {
 	Tracks []TrackResponse `json:"tracks"`
+}
+
+type ArtistResponse struct {
+    Id uuid.UUID `json:"id"`
+    Name string `json:"name"`
+}
+
+type ArtistsResponse struct {
+    Artists []ArtistResponse `json:"artists"`
 }

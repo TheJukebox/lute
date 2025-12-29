@@ -46,24 +46,31 @@ var mimeToExtension = map[string]string {
     "audio/wav": ".wav",
 }
 
-func AllArtists() ([]Artist, error) {
+func AllArtists() ([]ArtistResponse, error) {
 	query := `
 		SELECT id, name FROM artists;		
 	`
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+		return nil, fmt.Errorf("Failed to gather Artists: %w", err)
 	}
-	var artists []Artist
-	for rows.Next() {
-		var artist Artist
+    var artists []Artist
+    for rows.Next() {
+        var artist Artist 
 		err = rows.Scan(&artist.ID, &artist.Name)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
 		}
 		artists = append(artists, artist)
-	}
-	return artists, rows.Err()
+    }
+    response := make([]ArtistResponse, len(artists))
+    for i, artist := range artists {
+        response[i] = ArtistResponse {
+            Id: artist.ID,
+            Name: artist.Name,
+        }
+    }
+    return response, rows.Err()
 }
 
 func ArtistByName(name string) (Artist, error) {
@@ -338,6 +345,44 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 		if err = json.NewEncoder(w).Encode(response); err != nil {
             log.Printf("Failed to fetch tracks from database: %w", err)
 			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func Artists(w http.ResponseWriter, r *http.Request) {
+    log.Printf("requested artists")
+	if r.Method == http.MethodGet {
+        artistID := r.URL.Query().Get("artist")
+        var response any
+        if artistID != "" {
+            artist, err := ArtistByID(artistID)
+            if err != nil {
+                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+                return
+            }
+            response = ArtistResponse {
+                Id: artist.ID,
+                Name: artist.Name,
+            }
+        } else {
+            artists, err := AllArtists()	
+            if err != nil {
+                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+                return
+            }
+            response = ArtistsResponse {
+                Artists: artists,
+            }
+        }
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(response); err != nil {
+            log.Printf("Failed to fetch artists from database: %w", err)
+			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
 			return
 		}
 	}

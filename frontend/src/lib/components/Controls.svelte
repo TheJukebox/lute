@@ -130,9 +130,15 @@
             <div class="px-4 py-1 float-right text-lime-800 text-sm">{formatTime(playback.timeElapsed)}/{formatTime(playback.duration) || "00:00:00"}</div>
             <div class="flex flex-col items-center justify-center text-center w-full transition">
                 <div class="grid grid-cols-3 gap-0 font-semibold w-full text-lime-800">
-                    <span>{trackList.currentTrack.Name}</span>
-                    <span >{trackList.currentTrack.Artist}</span> 
-                    <span>{trackList.currentTrack.Album}</span>
+                    {#if trackList.currentTrack.title }
+                        <span>{trackList.currentTrack.title || 'It is pitch black.'}</span>
+                        <span >{trackList.currentTrack.artist?.Name}</span> 
+                        <span>{trackList.currentTrack.album?.Title || 'You are likely to be eaten by a Grue' } </span>
+                    {:else }
+                        <span></span>
+                        <span class="italic font-normal">Select a track below to start listening.</span>
+                        <span></span>
+                    {/if}
                 </div>
             </div>
         </div>

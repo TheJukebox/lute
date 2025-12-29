@@ -37,7 +37,7 @@ func main() {
     }
 
     log.Printf("Connecting to Minio...")
-    err = storage.Connect("minio:9000", "minioadmin")
+    err = storage.Connect("localhost:9000", "minioadmin")
     if err != nil {
         log.Fatalf("Failed to connect to Minio: %v", err)
     }

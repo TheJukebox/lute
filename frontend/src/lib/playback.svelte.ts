@@ -132,6 +132,14 @@ export function togglePlayback() {
     }
 }
 
+export function stopPlayback() {
+    getAudioContext()
+    if (audioContext) {
+        audioContext.suspend();
+        playback.playing = false;
+    }
+}
+
 export async function startPlayback() {
     playback.playing = false;
     if (playback.countInterval) {

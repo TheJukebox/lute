@@ -14,4 +14,5 @@ func init() {
     http.HandleFunc("/ws", stream.WebsocketHandler)
 
 	http.HandleFunc("/tracks", storage.Tracks)
+	http.HandleFunc("/artists", storage.Artists)
 }

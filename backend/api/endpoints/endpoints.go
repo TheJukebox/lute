@@ -15,4 +15,5 @@ func init() {
 
 	http.HandleFunc("/tracks", storage.Tracks)
 	http.HandleFunc("/artists", storage.Artists)
+	http.HandleFunc("/playlists", storage.Playlists)
 }

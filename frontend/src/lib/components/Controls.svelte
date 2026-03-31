@@ -119,7 +119,7 @@
             aria-valuemin={0}
             aria-valuemax={1}
             tabindex="0"
-            class="group h-2 rounded-full bg-slate-400 w-full shadow-sm/100"
+            class="group h-2 rounded-full bg-slate-400 w-full shadow-sm/100 hover:cursor-pointer"
         >
             <div class="relative h-2 rounded-full bg-lime-100" style={`width: ${(playback.timeElapsed / playback.duration) * 100}%`}>
                 <div 

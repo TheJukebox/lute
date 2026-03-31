@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import Upload from '$lib/components/Upload.svelte';
     import TrackList from '$lib/components/TrackList.svelte';
-    import Controls from '$lib/components/Controls.svelte';
+    import Nav from '$lib/components/Nav.svelte';
     import ArtistBox from '$lib/components/ArtistBox.svelte';
     import {artistList, fetchArtists} from '$lib/tracklist.svelte';
 
@@ -11,15 +11,10 @@
         fetchArtists();
     });
 </script>
-<main class="flex flex-col items-center bg-green-50 min-h-screen min-w-screen">
-    <div class="p-4 flex flex-col">
-        <div class="flex justify-center">
-            <Controls />
-        </div>
-        <div>
-            <h1 class="ml-20 p-2 text-xl font-bold">Home</h1>
-            <h2 class="ml-20 p-2 text-lg font-semibold">Artists</h2>
-        </div>
+
+<Nav />
+<main class="flex flex-col items-center bg-gray-950 min-h-screen min-w-screen">
+    <div class="p-4">
         {#if artistList.loading }
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition">
             {#each { length: 8 } }

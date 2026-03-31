@@ -39,79 +39,39 @@
 
     function trackStyle(id: string): string {
         if (isPlaying(id)) {
-            return "hover:bg-lime-200 hover:cursor-pointer text-lime-900 font-bold border border-sm border-lime-500 rounded-lg hover:text-green-700 shadow-sm";
+            return "hover:bg-gray-200 hover:cursor-pointer text-lime-200 font-bold border hover:text-gray-700";
         }
-        return "hover:bg-lime-200 hover:cursor-pointer hover:scale-[1.001] text-lime-900 hover:font-bold rounded-lg hover:shadow";
+        return "hover:bg-gray-200 hover:cursor-pointer hover:scale-[1.001] text-white hover:text-gray-700 hover:font-bold  hover:shadow";
     };
 
     onMount(() => {
     });
 </script>
 
-<div class="p-2 shadow rounded-xl bg-lime-50 min-w-full min-h-80 flex flex-col gap-2 overflow-x-clip h-full max-h-320 transition scroll-smooth">
-        <div class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full text-lime-600 font-semibold rounded-full bg-lime-200 shadow">
+<div class="p-2 rounded-sm min-w-full min-h-80 flex flex-col overflow-x-clip h-full max-h-320 transition scroll-smooth">
+        <div class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full text-white font-semibold bg-gray-800">
             <div>No.</div>
             <div>Track</div>
             <div>Artist</div>
             <div>Album</div>
         </div>
-        {#if trackList.loading }
-        <div class="shadow rounded-xl bg-lime-100 overflow-y-auto overflow-x-clip">
-            <div
-                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
-            >
-                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-            </div>
-            <div
-                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
-            >
-                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-            </div>
-            <div
-                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
-            >
-                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-            </div>
-            <div
-                class="grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition px-4 py-2 w-full h-full"
-            >
-                <div class="w-8 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-50 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-                <div class="w-100 py-3 bg-slate-600 rounded-full animate-pulse"></div>
-            </div>
-        </div>
-            <div class="flex flex-1 justify-center p-5"><LoaderCircle size="96" class="animate-spin text-lime-400"/></div>
-        {:else}
-        <div class="shadow rounded-xl bg-lime-100 overflow-y-auto overflow-x-clip">
             {#each trackList.tracks as track}
-                <button 
-                    class={`grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full transition ${trackStyle(track.id)}`}
-                    onclick={() => {
-                        stopPlayback();
-                        playTrack(track);
-                    }}
-                    type="button"
-                >
-                    <div>{track.trackNumber}</div>
-                    <div>{track.title}</div>
-                    <div>
-                        {track.artist.Name}
-                    </div>
-                    <div>
-                        {track.album.Title}
-                    </div>
-                </button>
-            {/each}
-        </div>
-    {/if}
+            <button 
+                class={`grid grid-cols-[0.1fr_1fr_1fr_1fr] gap-4 px-4 py-2 text-left min-w-full text-gray-600 font-semibold bg-gray-700 ${trackStyle(track.id)}`}
+                onclick={() => {
+                    stopPlayback();
+                    playTrack(track);
+                }}
+                type="button"
+            >
+                <div>{track.trackNumber}</div>
+                <div>{track.title}</div>
+                <div>
+                    {track.artist.Name}
+                </div>
+                <div>
+                    {track.album.Title}
+                </div>
+            </button>
+        {/each}
 </div>

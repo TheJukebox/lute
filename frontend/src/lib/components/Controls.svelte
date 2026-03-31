@@ -96,89 +96,86 @@
     on:mousemove={mouseMove}
     on:mouseup={mouseUp}
 />
-    
-<div
-    class="grid grid-cols-[auto_1fr] gap-4 p-2 shadow bg-lime-50 rounded-xl w-full max-w-5xl"
->
-    <div class="flex p-2 w-32 h-32 sm:w-32 sm:h-32 md:w-48 md:h-48 shadow rounded-lg bg-lime-100 aspect-square">
-        <div class="inset-shadow-xs/20 p-2 min-w-full min-h-full bg-lime-200 rounded-sm"></div>
+
+<div class="flex rounded-lg w-200 h-18 bg-gray-800">
+    <!-- Album Art -->
+    <div class="rounded-lg w-18 h-18 bg-gray-700 aspect-square">
     </div>
-    <div class="flex flex-col gap-5 p-2 min-w-full shadow rounded-lg bg-lime-100 items-center">
-        <div class="inset-shadow-sm/20 bg-lime-200 rounded-lg p-2 min-w-full min-h-30 transition">
-            <div bind:this={seekSlider} 
-                onmousedown={mouseDown}
-                role="slider"
-                aria-valuenow={playback.timeElapsed}
-                aria-valuemin={0}
-                aria-valuemax={1}
-                tabindex="0"
-                class="group h-2 rounded-full bg-slate-400 w-full shadow-sm/100"
-            >
-                <div class="relative h-2 rounded-full bg-lime-100" style={`width: ${(playback.timeElapsed / playback.duration) * 100}%`}>
-                    <div 
-                        class="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 group-hover:scale-[2] bg-lime-400 rounded-full shadow-xs/40 group-hover:bg-lime-500 transition"
-                        onmousedown={mouseDown}
-                        role="slider"
-                        aria-valuenow={playback.timeElapsed}
-                        aria-valuemin={0}
-                        aria-valuemax={1}
-                        tabindex="0"
-                    >
-                    </div>
-                </div>
-            </div>
-            <div class="px-4 py-1 float-right text-lime-800 text-sm">{formatTime(playback.timeElapsed)}/{formatTime(playback.duration) || "00:00:00"}</div>
-            <div class="flex flex-col items-center justify-center text-center w-full transition">
-                <div class="grid grid-cols-3 gap-0 font-semibold w-full text-lime-800">
-                    {#if trackList.currentTrack.title }
-                        <span>{trackList.currentTrack.title || 'It is pitch black.'}</span>
-                        <span >{trackList.currentTrack.artist?.Name}</span> 
-                        <span>{trackList.currentTrack.album?.Title || 'You are likely to be eaten by a Grue' } </span>
-                    {:else }
-                        <span></span>
-                        <span class="italic font-normal">Select a track below to start listening.</span>
-                        <span></span>
-                    {/if}
-                </div>
-            </div>
+    <!-- Seekbar -->
+    <div class="w-full p-2 gap-2">
+        <div class="flex text-white text-sm gap-2">
+            {#if trackList.currentTrack.title }
+                <p>{trackList.currentTrack.title}</p>
+                <p>|</p><a class="text-lime-300" href="/tracks?album={trackList.currentTrack.artist.ID}">{trackList.currentTrack.album.Title}</a>
+                <p>-</p><a class="text-lime-300" href="/tracks?artist={trackList.currentTrack.artist.ID}">{trackList.currentTrack.artist.Name}</a>
+            {:else }
+                <p>Happy luting!</p>
+            {/if}
         </div>
-        <div class="relative flex items-center w-full">
-            <div class="ml-15 flex items-center gap-2">
-                <button onclick={toggleMute}>
-                    {#if playback.volume <= 0 }
-                        <VolumeX class="text-slate-300 fill-slate-300"/>
-                    {:else if playback.volume <= 0.25 }
-                        <Volume class="text-slate-500 fill-slate-500"/>
-                    {:else if playback.volume <= 0.75 }
-                        <Volume1 class="text-slate-500 fill-slate-500"/>
-                    {:else }
-                        <Volume2 class="text-slate-500 fill-slate-500"/>
-                    {/if}
-                </button>
-                <div
-                    bind:this={volumeSlider}
+        <div bind:this={seekSlider} 
+            onmousedown={mouseDown}
+            role="slider"
+            aria-valuenow={playback.timeElapsed}
+            aria-valuemin={0}
+            aria-valuemax={1}
+            tabindex="0"
+            class="group h-2 rounded-full bg-slate-400 w-full shadow-sm/100 hover:cursor-pointer"
+        >
+            <div class="relative h-2 rounded-full bg-lime-100" style={`width: ${(playback.timeElapsed / playback.duration) * 100}%`}>
+                <div 
+                    class="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 group-hover:scale-[2] bg-lime-400 rounded-full shadow-xs/40 group-hover:bg-lime-500 transition"
+                    onmousedown={mouseDown}
                     role="slider"
-                    aria-valuenow={playback.volume}
+                    aria-valuenow={playback.timeElapsed}
                     aria-valuemin={0}
                     aria-valuemax={1}
                     tabindex="0"
-                    onmousedown={mouseDown}
-                    class="group h-2 rounded-full bg-slate-400 w-30 shadow-sm/100"
                 >
-                    <div class={`h-2 rounded-full bg-lime-100 relative ${dragging ? "" : "transition-all"}`} style={`width: ${playback.volume * 100}%`}>
-                        <div 
-                            class="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 group-hover:scale-[1.25] bg-lime-400 rounded-full shadow-xs/40 group-hover:bg-lime-500 transition"
-                            onmousedown={mouseDown}
-                            role="slider"
-                            aria-valuenow={playback.volume}
-                            aria-valuemin={0}
-                            aria-valuemax={1}
-                            tabindex="0"
-                        ></div>
-                    </div>
                 </div>
             </div>
-            <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4">
+
+        </div>
+        <!-- Elapsed time -->
+        <div class="px-4 py-1 float-right text-white text-sm">{formatTime(playback.timeElapsed)}/{formatTime(playback.duration) || "00:00:00"}</div>
+        <!-- Volume -->
+        <div class="mt-2 flex items-center gap-2">
+            <button onclick={toggleMute} class="hover:cursor-pointer">
+                {#if playback.volume <= 0 }
+                    <VolumeX class="text-slate-300 fill-slate-300"/>
+                {:else if playback.volume <= 0.25 }
+                    <Volume class="text-slate-500 fill-slate-500"/>
+                {:else if playback.volume <= 0.75 }
+                    <Volume1 class="text-slate-500 fill-slate-500"/>
+                {:else }
+                    <Volume2 class="text-slate-500 fill-slate-500"/>
+                {/if}
+            </button>
+            <div
+                bind:this={volumeSlider}
+                role="slider"
+                aria-valuenow={playback.volume}
+                aria-valuemin={0}
+                aria-valuemax={1}
+                tabindex="0"
+                onmousedown={mouseDown}
+                class="group h-2 rounded-full bg-slate-400 w-15 shadow-sm/100 hover:cursor-pointer"
+            >
+                <div class={`h-2 rounded-full bg-lime-100 relative ${dragging ? "" : "transition-all"}`} style={`width: ${playback.volume * 100}%`}>
+                    <div 
+                        class="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 group-hover:scale-[1.25] bg-lime-400 rounded-full shadow-xs/40 group-hover:bg-lime-500 transition"
+                        onmousedown={mouseDown}
+                        role="slider"
+                        aria-valuenow={playback.volume}
+                        aria-valuemin={0}
+                        aria-valuemax={1}
+                        tabindex="0"
+                    ></div>
+                </div>
+            </div>
+        </div>
+        <!-- Playback controls -->
+        <div class="relative flex items-center w-full">
+            <div class="absolute bottom-1/2 left-1/2 transform -translate-x-1/2 flex items-center">
                 <button onclick={() => startPlaybackAt(0)} class="active:scale-[0.95] transition">
                     <SkipBack class="text-slate-500 fill-slate-500  hover:text-lime-500 hover:fill-lime-500 transition cursor-pointer" />
                 </button>

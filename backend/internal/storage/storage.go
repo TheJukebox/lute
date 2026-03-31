@@ -46,6 +46,15 @@ var mimeToExtension = map[string]string {
     "audio/wav": ".wav",
 }
 
+func writeResponse(w http.ResponseWriter, response any) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(response)
+}
+
 func AllArtists() ([]ArtistResponse, error) {
 	query := `
 		SELECT id, name FROM artists;		
@@ -291,12 +300,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
             URL: presignedURL.String(),
             Fields: formData,
         }
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        if err = json.NewEncoder(w).Encode(response); err != nil {
+        if err = writeResponse(w, response); err != nil {
             http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
             return
         }
@@ -337,12 +341,7 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 		response := TracksResponse {
 			Tracks: tracks,
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.WriteHeader(http.StatusOK)
-		if err = json.NewEncoder(w).Encode(response); err != nil {
+		if err = writeResponse(w, response); err != nil {
             log.Printf("Failed to fetch tracks from database: %w", err)
 			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
 			return
@@ -351,7 +350,6 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 }
 
 func Artists(w http.ResponseWriter, r *http.Request) {
-    log.Printf("requested artists")
 	if r.Method == http.MethodGet {
         artistID := r.URL.Query().Get("artist")
         var response any
@@ -375,15 +373,15 @@ func Artists(w http.ResponseWriter, r *http.Request) {
                 Artists: artists,
             }
         }
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(response); err != nil {
+        if err := writeResponse(w, response); err != nil {
             log.Printf("Failed to fetch artists from database: %w", err)
 			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
 			return
 		}
 	}
+}
+
+
+func Playlists(w http.ResponseWriter, r *http.Request) {	
+	return
 }

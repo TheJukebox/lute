@@ -84,6 +84,9 @@ var PlaylistTracksTable = JunctionTable {
         PlaylistsTable,
         TracksTable,
     },
+	fields: []Field {
+		IntegerField{ name: "track_number", null: false, hasDefault: true, defaultValue: 1 },
+	},
 }
 
 var Tables = []Table {
@@ -193,8 +196,6 @@ func (obj *Track) Create() error {
     _ = pool.QueryRow(ctx, query, obj.ID, obj.Album)
 	return nil
 }
-
-
 
 // working on this concept, but i dont think its needed yet
 // type Track struct {

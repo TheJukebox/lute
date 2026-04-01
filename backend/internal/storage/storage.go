@@ -100,6 +100,38 @@ func ArtistByID(id string) (Artist, error) {
     return artist, err
 }
 
+func Artists(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+        artistID := r.URL.Query().Get("artist")
+        var response any
+        if artistID != "" {
+            artist, err := ArtistByID(artistID)
+            if err != nil {
+                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+                return
+            }
+            response = ArtistResponse {
+                Id: artist.ID,
+                Name: artist.Name,
+            }
+        } else {
+            artists, err := AllArtists()	
+            if err != nil {
+                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+                return
+            }
+            response = ArtistsResponse {
+                Artists: artists,
+            }
+        }
+        if err := writeResponse(w, response); err != nil {
+            log.Printf("Failed to fetch artists from database: %w", err)
+			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 func AlbumByTitle(title string, artist uuid.UUID) (Album, error) {
     query := `
         SELECT id, title, artist FROM albums WHERE title = $1 and artist = $2;
@@ -156,7 +188,6 @@ func TracksByArtist(id string) ([]TrackResponse, error) {
 }
 
 func TracksByAlbum(id string) ([]TrackResponse, error) {
-
     query := `
         SELECT id, title, uri_name, path, artist, album, track_number, disk_number
         FROM tracks WHERE album = $1;
@@ -225,6 +256,84 @@ func AllTracks() ([]TrackResponse, error) {
         }
     }
 	return response, rows.Err()
+}
+
+func Tracks(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+        artistID := r.URL.Query().Get("artist")
+        albumID := r.URL.Query().Get("album")
+        var tracks []TrackResponse
+        var err error
+        if albumID != "" {
+            tracks, err = TracksByAlbum(albumID)
+        } else if artistID != "" {
+            tracks, err = TracksByArtist(artistID)
+        } else {
+            tracks, err = AllTracks()	
+            if err != nil {
+                http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+                return
+            }
+        }
+		response := TracksResponse {
+			Tracks: tracks,
+		}
+		if err = writeResponse(w, response); err != nil {
+            log.Printf("Failed to fetch tracks from database: %w", err)
+			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+// func PlaylistByID(string id) {
+// 	query := `
+// 		SELECT id, title, description
+// 		FROM playlists
+// 		WHERE id = $1;
+// 	`
+//     rows, err := pool.Query(ctx, query, id)
+// }
+
+func Playlists(w http.ResponseWriter, r *http.Request) {	
+	log.Print("received playlists request")
+    if r.Method == http.MethodOptions {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+        w.WriteHeader(http.StatusNoContent)
+        return
+    }
+	
+	if r.Method == http.MethodPost {
+		err := r.ParseForm()
+		if err != nil {
+			log.Printf("[%v] Failed to create new playlist: %v", r.RemoteAddr, err)
+		}
+		var body CreatePlaylistRequest
+		err = json.NewDecoder(r.Body).Decode(&body)
+		log.Print(err)
+		if err != nil || body.Title == "" {
+			http.Error(w, "title must be specified.", http.StatusBadRequest)
+			return
+		}
+		title := body.Title
+		description := body.Description
+		playlist := Playlist {
+			Title: title,
+			Description: description,
+		}
+		playlist.Create()
+		response := PlaylistResponse {
+			Id: playlist.ID,
+			Title: playlist.Title,
+			Description: playlist.Description,
+		}
+        if err = writeResponse(w, response); err != nil {
+            http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
+            return
+        }
+	}
 }
 
 func findExistingArtistByName(name string) Artist {
@@ -321,67 +430,3 @@ func Upload(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func Tracks(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-        artistID := r.URL.Query().Get("artist")
-        albumID := r.URL.Query().Get("album")
-        var tracks []TrackResponse
-        var err error
-        if albumID != "" {
-            tracks, err = TracksByAlbum(albumID)
-        } else if artistID != "" {
-            tracks, err = TracksByArtist(artistID)
-        } else {
-            tracks, err = AllTracks()	
-            if err != nil {
-                http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
-                return
-            }
-        }
-		response := TracksResponse {
-			Tracks: tracks,
-		}
-		if err = writeResponse(w, response); err != nil {
-            log.Printf("Failed to fetch tracks from database: %w", err)
-			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
-			return
-		}
-	}
-}
-
-func Artists(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-        artistID := r.URL.Query().Get("artist")
-        var response any
-        if artistID != "" {
-            artist, err := ArtistByID(artistID)
-            if err != nil {
-                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
-                return
-            }
-            response = ArtistResponse {
-                Id: artist.ID,
-                Name: artist.Name,
-            }
-        } else {
-            artists, err := AllArtists()	
-            if err != nil {
-                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
-                return
-            }
-            response = ArtistsResponse {
-                Artists: artists,
-            }
-        }
-        if err := writeResponse(w, response); err != nil {
-            log.Printf("Failed to fetch artists from database: %w", err)
-			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
-			return
-		}
-	}
-}
-
-
-func Playlists(w http.ResponseWriter, r *http.Request) {	
-	return
-}

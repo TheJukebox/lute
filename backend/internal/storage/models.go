@@ -165,7 +165,7 @@ func (obj *Album) Create() error {
 }
 
 type Track struct {
-    ID uuid.UUID
+    ID uuid.UUID 
     Title string
     UriName string
     Path string
@@ -194,6 +194,36 @@ func (obj *Track) Create() error {
         VALUES ($1, $2);
     `
     _ = pool.QueryRow(ctx, query, obj.ID, obj.Album)
+	return nil
+}
+
+type Playlist struct {
+	ID uuid.UUID
+	Title string
+	Description string
+	Tracks []Track
+}
+
+func (obj *Playlist) Create() error {
+	query := `
+		INSERT INTO playlists (title, description)
+		VALUES ($1, $2)
+		RETURNING id, title, description
+	`
+	row := pool.QueryRow(ctx, query, obj.Title, obj.Description)
+	row.Scan(&obj.ID, &obj.Title, &obj.Description)
+	return nil
+}
+
+func (obj *Playlist) AddTrack(track *Track) error {
+	query := `
+		INSERT INTO playlist_tracks (playlists_id, tracks_id, track_number)
+		SELECT $1, $2, COALESCE(MAX(track_number), 0) + 1
+		FROM playlist_tracks
+		WHERE playlists_id = $1
+	`
+	row := pool.QueryRow(ctx, query, obj.ID, track.ID)
+	row.Scan(&obj.ID, &track.ID)
 	return nil
 }
 

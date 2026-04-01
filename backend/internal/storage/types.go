@@ -179,9 +179,10 @@ func (t JunctionTable) Create() error {
         (%v, PRIMARY KEY (%v));
     `
     referenceTables := t.referenceTables
+	fields := t.fields
     // we need to set up the referenceTables here
     // as sql entries
-    fieldStrings := make([]string, len(referenceTables))
+    fieldStrings := make([]string, len(referenceTables) + len(fields))
     pkeys := make([]string, len(referenceTables))
     for i, table := range referenceTables {
         fieldString := fmt.Sprintf(
@@ -197,6 +198,18 @@ func (t JunctionTable) Create() error {
             t.fields, 
             IDField { name: fmt.Sprintf("%v_id", table.Name()), foreignKey: true, foreignKeyRef: table },
         )
+    }
+    for i, field := range t.Fields() {
+        fieldString := fmt.Sprintf(
+            "%v %v %v %v %v %v",
+            field.Name(),
+            field.Type(),
+            field.ForeignKey("CASCADE"),
+            field.PrimaryKey(),
+            field.Default(),
+            field.Null(),
+        )
+        fieldStrings[i] = strings.TrimSpace(fieldString)
     }
     t.primaryKey = IDField {
         name: fmt.Sprintf("pkey_%v", t.name),
@@ -247,6 +260,7 @@ func (t BaseTable) Create() error {
     return err
 }
 
+
 // Request and response types
 type UploadRequest struct {
     Name string `json:"name"`
@@ -285,4 +299,16 @@ type ArtistResponse struct {
 
 type ArtistsResponse struct {
     Artists []ArtistResponse `json:"artists"`
+}
+
+type PlaylistResponse struct {
+	Id uuid.UUID `json:"id"`
+	Title string `json:"title"`
+	Description string `json:"description"`
+	Tracks []TrackResponse `json:"tracks"`
+}
+
+type CreatePlaylistRequest struct {
+	Title string `json:"title"`
+	Description string `json:"description"`
 }

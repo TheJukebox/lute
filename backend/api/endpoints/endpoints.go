@@ -1,7 +1,6 @@
 package endpoints
 
 import (
-	"lute/internal/storage"
 	"lute/internal/stream"
 	"lute/api/handlers"
 	"net/http"
@@ -10,11 +9,11 @@ import (
 // You can register new endpoints here and they will get
 // automatically picked up.
 func init() {
-    http.HandleFunc("/upload", storage.Upload)
+    http.HandleFunc("/upload", handlers.Upload)
     http.HandleFunc("/stream", stream.AudioStream)
     http.HandleFunc("/ws", stream.WebsocketHandler)
 
 	http.HandleFunc("/tracks", handlers.Tracks)
-	http.HandleFunc("/artists", storage.Artists)
-	http.HandleFunc("/playlists", storage.Playlists)
+	http.HandleFunc("/artists", handlers.Artists)
+	http.HandleFunc("/playlists", handlers.Playlists)
 }

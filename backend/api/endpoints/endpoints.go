@@ -3,6 +3,7 @@ package endpoints
 import (
 	"lute/internal/storage"
 	"lute/internal/stream"
+	"lute/api/handlers"
 	"net/http"
 )
 
@@ -13,7 +14,7 @@ func init() {
     http.HandleFunc("/stream", stream.AudioStream)
     http.HandleFunc("/ws", stream.WebsocketHandler)
 
-	http.HandleFunc("/tracks", storage.Tracks)
+	http.HandleFunc("/tracks", handlers.Tracks)
 	http.HandleFunc("/artists", storage.Artists)
 	http.HandleFunc("/playlists", storage.Playlists)
 }

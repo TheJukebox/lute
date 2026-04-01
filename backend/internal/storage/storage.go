@@ -296,7 +296,6 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 // }
 
 func Playlists(w http.ResponseWriter, r *http.Request) {	
-	log.Print("received playlists request")
     if r.Method == http.MethodOptions {
         w.Header().Set("Access-Control-Allow-Origin", "*")
         w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -304,7 +303,7 @@ func Playlists(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusNoContent)
         return
     }
-	
+
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
 		if err != nil {

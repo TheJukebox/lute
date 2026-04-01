@@ -2,10 +2,8 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"

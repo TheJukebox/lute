@@ -36,16 +36,6 @@ func Connect(
     return err
 }
 
-
-func writeResponse(w http.ResponseWriter, response any) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.WriteHeader(http.StatusOK)
-	return json.NewEncoder(w).Encode(response)
-}
-
 func AllArtists() ([]ArtistResponse, error) {
 	query := `
 		SELECT id, name FROM artists;		

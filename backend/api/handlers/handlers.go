@@ -51,7 +51,7 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 			Tracks: tracks,
 		}
 		if err = writeResponse(w, response); err != nil {
-            log.Printf("Failed to fetch tracks from database: %w", err)
+            log.Printf("Failed to fetch tracks from database: %v", err)
 			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
 			return
 		}
@@ -83,13 +83,12 @@ func Artists(w http.ResponseWriter, r *http.Request) {
             }
         }
         if err := writeResponse(w, response); err != nil {
-            log.Printf("Failed to fetch artists from database: %w", err)
+            log.Printf("Failed to fetch artists from database: %v", err)
 			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
 			return
 		}
 	}
 }
-
 
 func Playlists(w http.ResponseWriter, r *http.Request) {	
     if r.Method == http.MethodOptions {

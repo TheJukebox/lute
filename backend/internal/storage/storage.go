@@ -98,6 +98,19 @@ func AlbumByID(id string) (Album, error) {
     return album, err
 }
 
+func AddTrackToPlaylist(track_id string, playlist_id string) error {
+	query := `
+		INSERT INTO playlist_tracks (tracks_id, playlists_id, track_number)
+		SELECT $1, $2, COALESCE(MAX(track_number), 0) + 1
+		FROM playlist_tracks WHERE playlists_id = $1;
+	`
+	_, err := pool.Exec(ctx, query, track_id, playlist_id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func TracksByArtist(id string) ([]TrackResponse, error) {
 
     query := `
@@ -133,6 +146,37 @@ func TracksByArtist(id string) ([]TrackResponse, error) {
         }
     }
 	return response, rows.Err()
+}
+
+func TrackByID(id string) (TrackResponse, error) {
+	query := `
+		SELECT track.id, track.title, track.uri_name, track.path,
+		artist.id, artist.name,
+		album.id, album.title,
+		track.track_number, track.disk_number
+		FROM tracks track
+		JOIN artists artist ON track.artist = artist.id
+		JOIN albums album ON track.album = album.id
+		WHERE track.id = $1;
+	`
+	track := TrackResponse {}
+    err := pool.QueryRow(
+    	ctx,
+		query,
+		id,
+	).Scan(
+		&track.Id,
+		&track.Title,
+		&track.UriName,
+		&track.Path,
+		&track.Artist.ID,
+		&track.Artist.Name,
+		&track.Album.ID,
+		&track.Album.Title,
+		&track.TrackNumber,
+		&track.DiskNumber,
+	)
+    return track, err
 }
 
 func TracksByAlbum(id string) ([]TrackResponse, error) {

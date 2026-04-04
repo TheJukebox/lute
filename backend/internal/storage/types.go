@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"strings"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -16,250 +17,100 @@ const (
     SetDefault string = "SET DEFAULT"
 )
 
-// Model Fields
-type Field interface {
-    Name() string
-    Type() any
-    Value() any
-    Default() any
-    Null() string 
-    PrimaryKey() string
-    ForeignKey(onDelete string) string
+// Field types
+const (
+	TextField string = "varchar(255)"
+	IntegerField string = "int"
+	IDField string = "uuid"
+)
+
+type ForeignKey struct {
+	table *Table
+	field *Field
 }
 
-type IntegerField struct {
-    name string
-    value int 
-    hasDefault bool
-    defaultValue int
-    null bool 
-    primaryKey bool
-    foreignKey bool
-    foreignKeyRef Table
-}
-func (f IntegerField) Name() string { return f.name }
-func (f IntegerField) Type() any { return "INTEGER" }
-func (f IntegerField) Value() any { return f.value }
-func (f IntegerField) Default() any { 
-    if f.hasDefault {
-       return fmt.Sprintf("DEFAULT %d", f.defaultValue)
-    }
-    return ""
-}
-func (f IntegerField) PrimaryKey() string {
-    if f.primaryKey {
-        return "PRIMARY KEY"
-    } else {
-        return ""
-    }
-}
-func (f IntegerField) Null() string { 
-    if f.null {
-        return "NULL"
-    } else {
-        return "NOT NULL"
-    }
-}
-func (f IntegerField) ForeignKey(onDelete string) string {
-    if f.foreignKey {
-        return fmt.Sprintf(
-            "REFERENCES %v(%v) ON DELETE %v",
-            f.foreignKeyRef.Name(),
-            f.foreignKeyRef.PrimaryKey().Name(),
-            onDelete,
-        )
-    }
-    return ""
+type Field struct {
+	name string
+	value any
+	fieldType string
+	primaryKey bool
+	foreignKey bool
+	hasDefault bool
+	foreignKeyRef ForeignKey
+	nullable bool
+	onDelete string
+	defaultValue any
 }
 
-type TextField struct {
-    name string
-    value string
-    hasDefault bool
-    defaultValue string
-    null bool 
-    primaryKey bool
-    foreignKey bool
-    foreignKeyRef Table
+type Table struct {
+	name string
+	fields []Field
 }
-
-func (f TextField) Name() string { return f.name }
-func (f TextField) Type() any { return "VARCHAR" }
-func (f TextField) Value() any { return "'" + f.value + "'" }
-func (f TextField) Default() any { 
-    if f.hasDefault {
-       return "DEFAULT '" + f.defaultValue + "'" 
-    }
-    return ""
+func (t *Table) Create() {
+	queryBase := `
+		CREATE TABLE IF NOT EXISTS %v
+		(%v, PRIMARY KEY (%v));
+	`
+	var fieldStrings []string
+	var primaryKeys []string
+	for _, field := range t.fields {
+		var fieldString string
+		constraintString := ""
+		if !field.nullable {
+			constraintString = "NOT NULL"
+		}
+		defaultString := ""
+		if field.hasDefault {
+			switch field.fieldType {
+				case TextField:
+					defaultString = fmt.Sprintf("DEFAULT '%v'", field.defaultValue)
+				case IntegerField:
+					defaultString = fmt.Sprintf("DEFAULT %v", field.defaultValue)
+				case IDField:
+					defaultString = "DEFAULT gen_random_uuid()"
+			}
+		}
+		if field.foreignKey {
+			fieldString = fmt.Sprintf(
+				"%v %v %v %v REFERENCES %v(%v) ON DELETE %v",
+				field.name,
+				field.fieldType,
+				constraintString,
+				defaultString,
+				field.foreignKeyRef.table.name,
+				field.foreignKeyRef.field.name,
+				field.onDelete,
+			)
+		} else {
+			fieldString = fmt.Sprintf(
+				"%v %v %v %v",
+				field.name,
+				field.fieldType,
+				constraintString,
+				defaultString,
+			)
+		}
+		log.Printf("Generated field string for '%v': %v", field.name, fieldString)
+		fieldStrings = append(fieldStrings, fieldString)
+		if field.primaryKey {
+			primaryKeys = append(primaryKeys, field.name)
+		}
+	}
+	query := fmt.Sprintf(
+		queryBase,
+		t.name,
+		strings.Join(fieldStrings, ", "),
+		strings.Join(primaryKeys, ", "),
+	)
+	log.Printf("QUERY_BASE: %v", queryBase)
+	log.Printf("QUERY: %v", query)
+	_, err := pool.Exec(ctx, query)
+	if err != nil {
+		log.Fatalf("Failed to create table '%v': %v", t.name, err)
+	} else {
+		log.Printf("Created table '%v'.", t.name)
+	}
 }
-func (f TextField) PrimaryKey() string {
-    if f.primaryKey {
-        return "PRIMARY KEY"
-    } else {
-        return ""
-    }
-}
-func (f TextField) Null() string { 
-    if f.null {
-        return "NULL"
-    } else {
-        return "NOT NULL"
-    }
-}
-func (f TextField) ForeignKey(onDelete string) string {
-    if f.foreignKey {
-        return fmt.Sprintf(
-            "REFERENCES %v(%v) ON DELETE %v",
-            f.foreignKeyRef.Name(),
-            f.foreignKeyRef.PrimaryKey().Name(),
-            onDelete,
-        )
-    }
-    return ""
-}
-
-type IDField struct {
-    name string
-    value uuid.UUID 
-    primaryKey bool
-    foreignKey bool
-    foreignKeyRef Table
-    null bool
-}
-
-func (f IDField) Name() string { return f.name }
-func (f IDField) Type() any { return "UUID" }
-func (f IDField) Value() any { return "'" + f.value.String() + "'" }
-func (f IDField) Default() any { 
-    if !f.foreignKey {
-        return "DEFAULT gen_random_uuid()"
-    }
-    return ""
-}
-func (f IDField) PrimaryKey() string {
-    if f.primaryKey {
-        return "PRIMARY KEY"
-    }
-    return ""
-}
-func (f IDField) Null() string { return "NOT NULL" }
-func (f IDField) ForeignKey(onDelete string) string {
-    if f.foreignKey {
-        return fmt.Sprintf(
-            "REFERENCES %v(%v) ON DELETE %v",
-            f.foreignKeyRef.Name(),
-            f.foreignKeyRef.PrimaryKey().Name(),
-            onDelete, 
-        )
-    }
-    return ""
-}
-
-// Table models
-type Table interface {
-    Name() string 
-    PrimaryKey() Field
-    Fields() []Field
-    Create() error
-}
-
-type JunctionTable struct {
-    name string
-    primaryKey Field
-    referenceTables []Table
-    fields []Field
-}
-
-func (t JunctionTable) Name() string { return t.name }
-func (t JunctionTable) Fields() []Field { return t.fields }
-func (t JunctionTable) PrimaryKey() Field { return t.primaryKey }
-func (t JunctionTable) Create() error {
-    queryBase := `
-        CREATE TABLE IF NOT EXISTS %v
-        (%v, PRIMARY KEY (%v));
-    `
-    referenceTables := t.referenceTables
-	fields := t.fields
-    // we need to set up the referenceTables here
-    // as sql entries
-    fieldStrings := make([]string, len(referenceTables) + len(fields))
-    pkeys := make([]string, len(referenceTables))
-    for i, table := range referenceTables {
-        fieldString := fmt.Sprintf(
-            "%v_id %v REFERENCES %v(%v) ON DELETE CASCADE",
-            table.Name(),
-            table.PrimaryKey().Type(),
-            table.Name(),
-            table.PrimaryKey().Name(),
-        )
-        fieldStrings[i] = fieldString
-        pkeys[i] = fmt.Sprintf("%v_id", table.Name()) 
-        t.fields = append(
-            t.fields, 
-            IDField { name: fmt.Sprintf("%v_id", table.Name()), foreignKey: true, foreignKeyRef: table },
-        )
-    }
-    for i, field := range t.Fields() {
-        fieldString := fmt.Sprintf(
-            "%v %v %v %v %v %v",
-            field.Name(),
-            field.Type(),
-            field.ForeignKey("CASCADE"),
-            field.PrimaryKey(),
-            field.Default(),
-            field.Null(),
-        )
-        fieldStrings[i] = strings.TrimSpace(fieldString)
-    }
-    t.primaryKey = IDField {
-        name: fmt.Sprintf("pkey_%v", t.name),
-    }
-    query := fmt.Sprintf(
-        queryBase,
-        t.name,
-        strings.Join(fieldStrings, ", "),
-        strings.Join(pkeys, ", "),
-    )
-    _, err := pool.Exec(ctx, query)
-    return err
-}
-
-type BaseTable struct {
-    name string
-    primaryKey Field
-    fields []Field
-}
-
-func (t BaseTable) Name() string { return t.name }
-func (t BaseTable) Fields() []Field { return t.fields }
-func (t BaseTable) PrimaryKey() Field { return t.primaryKey }
-func (t BaseTable) Create() error {
-    queryBase := `
-        CREATE TABLE IF NOT EXISTS %v
-        (%v);
-    `
-    fields := t.Fields()
-    if len(fields) == 0 {
-        return fmt.Errorf("Table has no configured fields (%d)", len(fields))
-    }
-    fieldStrings := make([]string, len(fields))
-    for i, field := range t.Fields() {
-        fieldString := fmt.Sprintf(
-            "%v %v %v %v %v %v",
-            field.Name(),
-            field.Type(),
-            field.ForeignKey("CASCADE"),
-            field.PrimaryKey(),
-            field.Default(),
-            field.Null(),
-        )
-        fieldStrings[i] = strings.TrimSpace(fieldString)
-    }
-    query := fmt.Sprintf(queryBase, t.Name(), strings.Join(fieldStrings, ", ")) 
-    _, err := pool.Exec(ctx, query)
-    return err
-}
-
 
 // Request and response types
 type UploadRequest struct {
@@ -308,7 +159,11 @@ type PlaylistResponse struct {
 	Tracks []TrackResponse `json:"tracks"`
 }
 
-type CreatePlaylistRequest struct {
+type PlaylistRequest struct {
+	Type string `json:"type"`
+	Id string `json:"id"` 
 	Title string `json:"title"`
 	Description string `json:"description"`
+	Track string `json:"track_id"`
 }
+

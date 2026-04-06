@@ -22,6 +22,7 @@ var AlbumsTable = Table {
 	fields: []Field {
 		{ name: "id", nullable: false, primaryKey: true, fieldType: IDField, hasDefault: true },
 		{ name: "title", nullable: false, fieldType: TextField, hasDefault: true, defaultValue: "Unknown" },
+		{ name: "artist", nullable: false, fieldType: IDField, foreignKey: true, foreignKeyRef: ForeignKey{ table: &ArtistsTable, field: &ArtistsTable.fields[0] }, onDelete: Cascade }, 
 	},
 }
 
@@ -163,26 +164,34 @@ type Track struct {
 	DiskNumber int `json:"disk_number"`
 }
 
-func (obj *Track) Create() error {
+func (obj *Track) Create() {
 	query := `
 		INSERT INTO tracks (title, uri_name, path, artist, album, track_number, disk_number)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, title, uri_name, path, artist, album, track_number, disk_number;
 	`
 	row := pool.QueryRow(ctx, query, obj.Title, obj.UriName, obj.Path, obj.Artist, obj.Album, obj.TrackNumber, obj.DiskNumber)
-    row.Scan(&obj.ID, &obj.Title, &obj.UriName, &obj.Path, &obj.Artist, &obj.Album, &obj.TrackNumber, &obj.DiskNumber)
+	err := row.Scan(&obj.ID, &obj.Title, &obj.UriName, &obj.Path, &obj.Artist, &obj.Album, &obj.TrackNumber, &obj.DiskNumber)
+	if err != nil {
+		log.Printf("Failed to insert track: %v", err)
+	}
 
     query = `
-        INSERT INTO artist_tracks (tracks_id, artists_id)
+        INSERT INTO artist_tracks (track_id, artist_id)
         VALUES ($1, $2);
     `
-    _ = pool.QueryRow(ctx, query, obj.ID, obj.Artist)
+	_, err = pool.Exec(ctx, query, obj.ID, obj.Artist)
+	if err != nil {	
+		log.Printf("Failed to add track '%v' for artist '%v'", obj.ID, obj.Artist)
+	}
     query = `
-        INSERT INTO album_tracks (tracks_id, albums_id)
+        INSERT INTO album_tracks (track_id, album_id)
         VALUES ($1, $2);
     `
-    _ = pool.QueryRow(ctx, query, obj.ID, obj.Album)
-	return nil
+    _, err = pool.Exec(ctx, query, obj.ID, obj.Album)
+	if err != nil {	
+		log.Printf("Failed to add track '%v' for album '%v'", obj.ID, obj.Album)
+	}
 }
 
 type Playlist struct {
@@ -205,7 +214,7 @@ func (obj *Playlist) Create() error {
 
 func (obj *Playlist) AddTrack(track *Track) error {
 	query := `
-		INSERT INTO playlist_tracks (playlists_id, tracks_id, track_number)
+		INSERT INTO playlist_tracks (playlist_id, track_id, track_number)
 		SELECT $1, $2, COALESCE(MAX(track_number), 0) + 1
 		FROM playlist_tracks
 		WHERE playlists_id = $1

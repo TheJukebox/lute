@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -90,6 +91,45 @@ func Artists(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func CreatePlaylist(w http.ResponseWriter, request storage.PlaylistRequest) (storage.Playlist, error) {
+	if request.Title == "" {
+		http.Error(w, "title must be specified.", http.StatusBadRequest)
+		return storage.Playlist{}, errors.New("Create playlist request missing title.") 
+	}
+	title := request.Title
+	description := request.Description
+	playlist := storage.Playlist {
+		Title: title,
+		Description: description,
+	}
+	playlist.Create()
+	response := storage.PlaylistResponse {
+		Id: playlist.ID,
+		Title: playlist.Title,
+		Description: playlist.Description,
+	}
+	if err := writeResponse(w, response); err != nil {
+		http.Error(w, "Failed to create playlist.", http.StatusInternalServerError)
+		return storage.Playlist{}, errors.New("Failed to create playlist.")
+	}
+	return playlist, nil
+}
+
+func AddTrackToPlaylist(w http.ResponseWriter, request storage.PlaylistRequest) (storage.TrackResponse, error) {
+	log.Print(request.Track)
+	track, err := storage.TrackByID(request.Track)
+	if err != nil {
+		http.Error(w, "Failed to find track.", http.StatusInternalServerError)
+		return track, err
+	}
+	storage.AddTrackToPlaylist(track.Id.String(), request.Id) 
+	if err := writeResponse(w, track); err != nil {
+		http.Error(w, "Failed to add track to playlist.", http.StatusInternalServerError)
+		return track, err 
+	}
+	return track, nil
+}
+
 func Playlists(w http.ResponseWriter, r *http.Request) {	
     if r.Method == http.MethodOptions {
         w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -103,30 +143,35 @@ func Playlists(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
 			log.Printf("[%v] Failed to create new playlist: %v", r.RemoteAddr, err)
-		}
-		var body storage.CreatePlaylistRequest
-		err = json.NewDecoder(r.Body).Decode(&body)
-		log.Print(err)
-		if err != nil || body.Title == "" {
-			http.Error(w, "title must be specified.", http.StatusBadRequest)
+			http.Error(w, "Failed to create new playlist.", http.StatusInternalServerError)
 			return
 		}
-		title := body.Title
-		description := body.Description
-		playlist := storage.Playlist {
-			Title: title,
-			Description: description,
+		var body storage.PlaylistRequest
+		err = json.NewDecoder(r.Body).Decode(&body)
+		if err != nil {
+			log.Printf("[%v] Failed to decode playlist request: %v", r.RemoteAddr, err)
+			http.Error(w, "Failed to create new playlist.", http.StatusInternalServerError)
+			return
 		}
-		playlist.Create()
-		response := storage.PlaylistResponse {
-			Id: playlist.ID,
-			Title: playlist.Title,
-			Description: playlist.Description,
+
+		switch body.Type {
+			case "create":
+				playlist, err := CreatePlaylist(w, body)
+				if err != nil {
+					http.Error(w, "Failed to create playlist.", http.StatusInternalServerError)
+					log.Printf("[%v] Failed to create playlist: %v", r.RemoteAddr, err)
+				}
+				log.Print(playlist.Title)
+			case "add":
+				track, err := AddTrackToPlaylist(w, body)
+				if err != nil {
+					http.Error(w, "Failed to add track to playlist", http.StatusInternalServerError)
+					log.Printf("[%v] Failed to add track to playlist: %v", r.RemoteAddr, err)
+				}
+				log.Print(track.Title)
+			default:
+				http.Error(w, "type must be specified: create, add", http.StatusBadRequest)
 		}
-        if err = writeResponse(w, response); err != nil {
-            http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
-            return
-        }
 	}
 }
 
@@ -142,6 +187,7 @@ func findExistingArtistByName(name string) storage.Artist {
 
 func findExistingAlbum(title string, artistID uuid.UUID) (storage.Album) {
     album, err := storage.AlbumByTitle(title, artistID)
+	log.Println(err)
     if err != nil && err == pgx.ErrNoRows {
         log.Printf("No album '%v' by '%v' exists currently. Creating...", title, artistID)
         album.Title = title

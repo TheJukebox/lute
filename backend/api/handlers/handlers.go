@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"context"
-	"lute/internal/storage"
-	"log"
 	"encoding/json"
-	"net/http"
-	"time"
 	"errors"
+	"log"
+	"lute/internal/storage"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -130,6 +131,28 @@ func AddTrackToPlaylist(w http.ResponseWriter, request storage.PlaylistRequest) 
 	return track, nil
 }
 
+func GetPlaylists(w http.ResponseWriter, r *http.Request) {
+	response, err := storage.AllPlaylists()
+	if err != nil {
+		log.Printf("Failed to fetch playlists: %v", err)
+		http.Error(w, "Failed to  fetch playlists.", http.StatusInternalServerError)
+	}
+	writeResponse(w, response)
+}
+
+func GetPlaylistTracks(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
+	path := strings.Split(r.URL.Path, "/")
+	log.Println(path, len(path));
+	playlistId := path[2]
+	response, err := storage.TracksByPlaylistId(playlistId)
+	if err != nil {
+		log.Printf("Failed to fetch tracks for playlist '%v': %v", playlistId, err)
+		http.Error(w, "Failed to fetch tracks for playlist", http.StatusInternalServerError)
+	}
+	writeResponse(w, response)
+}
+
 func Playlists(w http.ResponseWriter, r *http.Request) {	
     if r.Method == http.MethodOptions {
         w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -138,26 +161,6 @@ func Playlists(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusNoContent)
         return
     }
-
-	if r.Method == http.MethodGet {
-        playlistId := r.URL.Query().Get("playlist")
-		log.Printf("playlist id: %v", playlistId);
-		if playlistId == "" {
-			response, err := storage.AllPlaylists()
-			if err != nil {
-				log.Printf("Failed to fetch playlists: %v", err)
-				http.Error(w, "Failed to  fetch playlists.", http.StatusInternalServerError)
-			}
-			writeResponse(w, response)
-		} else {
-			response, err := storage.TracksByPlaylistId(playlistId)
-			if err != nil {
-				log.Printf("Failed to fetch tracks for playlist '%v': %v", playlistId, err)
-				http.Error(w, "Failed to fetch tracks for playlist", http.StatusInternalServerError)
-			}
-			writeResponse(w, response)
-		}
-	}
 
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()

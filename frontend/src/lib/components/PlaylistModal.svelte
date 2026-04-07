@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
     import { ListPlus, ListRestart } from "@lucide/svelte";
     const playlistList = $state({playlists: []});
 
@@ -42,6 +43,10 @@
         console.log($state.snapshot(playlistList.playlists));
     }
 
+    function gotoPlaylist(playlistId: string) {
+        goto(`/playlists?playlist=${playlistId}`, { invalidateAll: true });
+    }
+
     onMount(async () => {
         fetchPlaylists();
     });
@@ -54,7 +59,7 @@
     </div>
     <div class="flex flex-col p-2 gap-1">
         {#each playlistList.playlists as playlist}
-            <a data-sveltekit-reload class="hover:text-lime-400 transition" href="/playlists?playlist={playlist.id}">{playlist.title}</a>
+            <a class="hover:text-lime-400 transition" href="/playlists/{playlist.id}">{playlist.title}</a>
         {/each}
     </div>
 </div>

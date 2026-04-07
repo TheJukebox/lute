@@ -1,21 +1,18 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import Controls from '$lib/components/Controls.svelte';
+    import type { PageProps } from './$types';
     import Nav from '$lib/components/Nav.svelte';
     import TrackList from '$lib/components/TrackList.svelte';
     import PlaylistModal from '$lib/components/PlaylistModal.svelte';
-    import { fetchPlaylistTracks } from '$lib/tracklist.svelte';
-    import ArtistBox from '$lib/components/ArtistBox.svelte';
+    import { fetchPlaylistTracks, trackList } from '$lib/tracklist.svelte';
 
-    let playlistId: string | null;
+    let { params }: PageProps = $props();
     
-    onMount(async () => {
-        const params: URLSearchParams = new URLSearchParams(window.location.search);
-        playlistId = params.get("playlist");
-        console.log(playlistId);
-        await fetchPlaylistTracks(playlistId);
+    $effect(() => {
+        const playlistId = params.playlistId;
+        console.log(`Fetching playlist '${playlistId}'`);
+        fetchPlaylistTracks(playlistId);
     });
-
 </script>
 
 <Nav/>

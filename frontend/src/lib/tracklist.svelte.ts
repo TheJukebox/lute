@@ -1,15 +1,18 @@
 import type { Track } from '$lib/upload';
 
-export const trackList = $state({ tracks: [], loading: true, nowPlaying: "", currentTrack: {}, currentArtist: {}, currentAlbum: {} });
+export const trackList = $state({ tracks: [], noTracks: true, loading: true, nowPlaying: "", currentTrack: {}, currentArtist: {}, currentAlbum: {} });
 export const artistList = $state({ artists: [], loading: true });
 
 export async function fetchPlaylistTracks(playlistId: string) {
     trackList.loading = true;
     trackList.tracks = [];
-    const response = await fetch(`http://localhost:7001/playlists?playlist=${playlistId}`);
+    const response = await fetch(`http://localhost:7001/playlists/${playlistId}`);
     const data = await response.json();
     console.log(data);
     trackList.tracks = data; 
+    if (trackList.tracks.length === 0) {
+        console.log("no tracks");
+    }
     trackList.loading = false;
 }
 

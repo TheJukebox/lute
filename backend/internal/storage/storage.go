@@ -250,3 +250,70 @@ func AllTracks() ([]TrackResponse, error) {
 	return response, rows.Err()
 }
 
+func TracksByPlaylistId(id string) ([]TrackResponse, error) {
+	query := `
+		SELECT pl.track_id, track.title, track.uri_name, 
+			track.path, track.artist, track.album, 
+			track.track_number, track.disk_number
+		FROM playlist_tracks pl
+		JOIN tracks track ON track.id = pl.track_id
+		WHERE pl.playlist_id = $1;
+	`
+	rows, err := pool.Query(ctx, query, id)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to gather tracks for playlist '%v': %v", id, err)
+	}
+	var tracks []Track
+	for rows.Next() {
+		var track Track
+		err = rows.Scan(&track.ID, &track.Title, &track.UriName, &track.Path, &track.Artist, &track.Album, &track.TrackNumber, &track.DiskNumber)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to gather Tracks: %w", err)
+		}
+		tracks = append(tracks, track)
+	}
+    response := make([]TrackResponse, len(tracks))
+    for i, track := range tracks {
+        artist, _ := ArtistByID(track.Artist.String())
+        album, _ := AlbumByID(track.Album.String())
+        response[i] = TrackResponse {
+            Id: track.ID,
+            Title: track.Title,
+            UriName: track.UriName,
+            Path: track.Path,
+            Artist: artist,
+            Album: album,
+            TrackNumber: track.TrackNumber,
+            DiskNumber: track.DiskNumber,
+        }
+    }
+	return response, rows.Err()
+}
+
+func AllPlaylists() ([]PlaylistResponse, error) {
+	query := `
+		SELECT id, title, description FROM playlists;
+	`
+	rows, err := pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to gather playlists: %v", err)
+	}
+	var playlists []Playlist
+	for rows.Next() {
+		var playlist Playlist
+		err = rows.Scan(&playlist.ID, &playlist.Title, &playlist.Description)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to gather playlists: %v", err)
+		}
+		playlists = append(playlists, playlist)
+	}
+	response := make([]PlaylistResponse, len(playlists))
+	for i, playlist := range playlists {
+		response[i] = PlaylistResponse{
+			Id: playlist.ID,
+			Title: playlist.Title,
+			Description: playlist.Description,
+		}
+	}
+	return response, nil
+}

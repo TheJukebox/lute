@@ -14,6 +14,9 @@
 
 <Nav />
 <main class="flex flex-col items-center bg-gray-950 min-h-screen min-w-screen">
+    <div class="w-full">
+        <Upload/>
+    </div>
     <div class="p-4">
         {#if artistList.loading }
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition">

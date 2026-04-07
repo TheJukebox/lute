@@ -45,7 +45,7 @@ var PlaylistsTable = Table {
 	fields: []Field {
 		{ name: "id", nullable: false, primaryKey: true, fieldType: IDField, hasDefault: true },
 		{ name: "title", nullable: false, fieldType: TextField, hasDefault: true, defaultValue: "New Playlist" }, 
-		{ name: "Description", nullable: false, fieldType: TextField, hasDefault: true, defaultValue: "" }, 
+		{ name: "description", nullable: false, fieldType: TextField, hasDefault: true, defaultValue: "" }, 
 	},
 }
 

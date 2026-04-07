@@ -139,6 +139,26 @@ func Playlists(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+	if r.Method == http.MethodGet {
+        playlistId := r.URL.Query().Get("playlist")
+		log.Printf("playlist id: %v", playlistId);
+		if playlistId == "" {
+			response, err := storage.AllPlaylists()
+			if err != nil {
+				log.Printf("Failed to fetch playlists: %v", err)
+				http.Error(w, "Failed to  fetch playlists.", http.StatusInternalServerError)
+			}
+			writeResponse(w, response)
+		} else {
+			response, err := storage.TracksByPlaylistId(playlistId)
+			if err != nil {
+				log.Printf("Failed to fetch tracks for playlist '%v': %v", playlistId, err)
+				http.Error(w, "Failed to fetch tracks for playlist", http.StatusInternalServerError)
+			}
+			writeResponse(w, response)
+		}
+	}
+
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
 		if err != nil {
@@ -160,6 +180,7 @@ func Playlists(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					http.Error(w, "Failed to create playlist.", http.StatusInternalServerError)
 					log.Printf("[%v] Failed to create playlist: %v", r.RemoteAddr, err)
+					return
 				}
 				log.Print(playlist.Title)
 			case "add":
@@ -167,10 +188,12 @@ func Playlists(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					http.Error(w, "Failed to add track to playlist", http.StatusInternalServerError)
 					log.Printf("[%v] Failed to add track to playlist: %v", r.RemoteAddr, err)
+					return
 				}
 				log.Print(track.Title)
 			default:
 				http.Error(w, "type must be specified: create, add", http.StatusBadRequest)
+				return
 		}
 	}
 }

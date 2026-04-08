@@ -8,7 +8,6 @@ export async function fetchPlaylistTracks(playlistId: string) {
     trackList.tracks = [];
     const response = await fetch(`http://localhost:7001/playlists/${playlistId}/tracks`);
     const data = await response.json();
-    console.log(data);
     trackList.tracks = data; 
     if (trackList.tracks.length === 0) {
         console.log("no tracks");
@@ -19,7 +18,6 @@ export async function fetchPlaylistTracks(playlistId: string) {
 export async function fetchPlaylist(playlistId: string): Promise<any> {
     const response = await fetch(`http://localhost:7001/playlists/${playlistId}`);
     const data = await response.json();
-    console.log(data);
     return data;
 }
 

@@ -58,31 +58,38 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Artists(w http.ResponseWriter, r *http.Request) {
-	artistID := r.URL.Query().Get("artist")
-	var response any
-	if artistID != "" {
-		artist, err := storage.ArtistByID(artistID)
-		if err != nil {
-			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
-			return
-		}
-		response = storage.ArtistResponse {
-			Id: artist.ID,
-			Name: artist.Name,
-		}
-	} else {
-		artists, err := storage.AllArtists()	
-		if err != nil {
-			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
-			return
-		}
-		response = storage.ArtistsResponse {
-			Artists: artists,
-		}
+func GetArtists(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
+	artists, err := storage.AllArtists()	
+	if err != nil {
+		http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+		return
+	}
+	response := storage.ArtistsResponse {
+		Artists: artists,
 	}
 	if err := writeResponse(w, response); err != nil {
 		log.Printf("Failed to fetch artists from database: %v", err)
+		http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+		return
+	}
+}
+
+func GetArtist(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
+	path := strings.Split(r.URL.Path, "/")
+	artistId := path[2]
+	artist, err := storage.ArtistByID(artistId)
+	if err != nil {
+		http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+		return
+	}
+	response := storage.ArtistResponse {
+		Id: artist.ID,
+		Name: artist.Name,
+	}
+	if err := writeResponse(w, response); err != nil {
+		log.Printf("Failed to fetch artist from database: %v", err)
 		http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
 		return
 	}

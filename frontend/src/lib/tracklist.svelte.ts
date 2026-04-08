@@ -61,6 +61,13 @@ export async function fetchArtistTracks(artistID: string) {
     trackList.loading = false;
 }
 
+export async function fetchAlbum(albumId: string) {
+    console.log("aaa");
+    const response = await fetch(`http://localhost:7001/albums/${albumId}`);
+    const data = await response.json();
+    return data;
+}
+
 export async function fetchAlbumTracks(albumID: string) {
     trackList.loading = true;
     trackList.tracks = [];

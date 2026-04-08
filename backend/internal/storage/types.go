@@ -136,6 +136,12 @@ type TrackResponse struct {
     DiskNumber int `json:"diskNumber"`
 }
 
+type AlbumResponse struct {
+    Id uuid.UUID `json:"id"`
+    Title string `json:"title"`
+    Artist string `json:"artist"`
+}
+
 type TracksResponse struct {
 	Tracks []TrackResponse `json:"tracks"`
 }

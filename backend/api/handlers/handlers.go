@@ -71,6 +71,30 @@ func GetArtistTracks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func GetAlbum(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
+	albumId, err := uuidFromPath(r.URL.Path)
+	if err != nil {
+		http.Error(w, "Invalid UUID.", http.StatusNotFound)
+		log.Printf("Invalid album UUID provided: '%v'", albumId)
+		return
+	}
+	album, err := storage.AlbumByID(albumId)
+	if err != nil {
+		http.Error(w, "Failed to fetch albums.", http.StatusInternalServerError)
+		return
+	}
+	response := storage.AlbumResponse {
+		Id: album.ID,
+		Title: album.Title,
+	}
+	if err := writeResponse(w, response); err != nil {
+		log.Printf("Failed to fetch album from database: %v", err)
+		http.Error(w, "Failed to fetch albums.", http.StatusInternalServerError)
+		return
+	}
+}
+
 func GetAlbumTracks(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
 	albumId, err := uuidFromPath(r.URL.Path)
@@ -79,7 +103,6 @@ func GetAlbumTracks(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Invalid album UUID provided: '%v'", albumId)
 	}
 	tracks, err := storage.TracksByAlbum(albumId)
-	log.Println(tracks)
 	if err != nil {
 		log.Printf("Failed to fetch tracks for album '%v': %v", albumId, err)
 		http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)

@@ -24,6 +24,9 @@ func init() {
 	http.HandleFunc("GET /artists", handlers.GetArtists)
 	http.HandleFunc("GET /artists/{artistId}", handlers.GetArtist)
 
+	// Albums
+	http.HandleFunc("GET /albums/{albumId}", handlers.GetAlbum)
+
 	// Playlists
 	http.HandleFunc("POST /playlists", handlers.Playlists)
 	http.HandleFunc("OPTIONS /playlists", handlers.Playlists)

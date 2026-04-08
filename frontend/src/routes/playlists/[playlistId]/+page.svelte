@@ -33,5 +33,4 @@
             <TrackList />
         </div>
     </div>
-    <PlaylistModal/>
 </main>

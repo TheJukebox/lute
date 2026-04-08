@@ -3,7 +3,6 @@
     import Controls from '$lib/components/Controls.svelte';
     import Nav from '$lib/components/Nav.svelte';
     import TrackList from '$lib/components/TrackList.svelte';
-    import PlaylistModal from '$lib/components/PlaylistModal.svelte';
     import { fetchAlbumTracks, fetchAlbum, trackList, fetchArtist } from '$lib/tracklist.svelte';
 
     let { params }: PageProps = $props();
@@ -33,5 +32,4 @@
             <TrackList />
         </div>
     </div>
-    <PlaylistModal/>
 </main>

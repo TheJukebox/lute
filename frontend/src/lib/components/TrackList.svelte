@@ -6,6 +6,9 @@
     import { trackList, fetchTracks, fetchArtistTracks, fetchAlbumTracks } from '$lib/tracklist.svelte';
     import { startPlayback, playback, stopPlayback } from '$lib/playback.svelte'; 
     import { LoaderCircle, CirclePlus } from '@lucide/svelte';
+    import PlaylistModal from '$lib/components/PlaylistModal.svelte';
+
+    let showPlaylistModal = $state(false);
 
     async function playTrack(track: Track) {
         trackList.nowPlaying = track.id;
@@ -43,6 +46,11 @@
         }
         return "hover:cursor-pointer text-white hover:text-lime-400 transition";
     };
+
+    function popPlaylistModal(e: Event) {
+        e.stopPropagation();
+        showPlaylistModal = true;
+    }
 </script>
 
 <div class="p-2 rounded-sm min-w-full min-h-80 flex flex-col overflow-x-clip h-full max-h-320 transition scroll-smooth">
@@ -70,7 +78,8 @@
                 <div>
                     {track.album.Title}
                 </div>
-                <div class="flex items-center justify-center self-center bg-gray-600 hover:bg-lime-400 aspect-square w-5 h-5 rounded-full text-xl hover:text-lime-200 hover:scale-[1.05]" onclick={(e) => { e.preventDefault(); e.stopPropagation(); console.log("add to playlist");}}><CirclePlus/></div>
+                <div class="flex items-center justify-center self-center bg-gray-600 hover:bg-lime-400 aspect-square w-5 h-5 rounded-full text-xl hover:text-lime-200 hover:scale-[1.05]" onclick={popPlaylistModal}><CirclePlus/></div>
             </button>
         {/each}
+<PlaylistModal bind:showPlaylistModal />
 </div>

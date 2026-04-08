@@ -3,7 +3,6 @@
     import Controls from '$lib/components/Controls.svelte';
     import Nav from '$lib/components/Nav.svelte';
     import TrackList from '$lib/components/TrackList.svelte';
-    import PlaylistModal from '$lib/components/PlaylistModal.svelte';
     import { fetchArtistTracks, trackList, fetchArtist } from '$lib/tracklist.svelte';
     import ArtistBox from '$lib/components/ArtistBox.svelte';
 
@@ -34,5 +33,4 @@
             <TrackList />
         </div>
     </div>
-    <PlaylistModal/>
 </main>

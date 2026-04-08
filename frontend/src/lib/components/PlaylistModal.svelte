@@ -1,15 +1,35 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { goto } from '$app/navigation';
     import { ListPlus, ListRestart } from "@lucide/svelte";
     const playlistList = $state({playlists: []});
 
-    let { showPlaylistModal = $bindable() } = $props();
+    let { showPlaylistModal = $bindable(), addTrackId = $bindable() } = $props();
     let dialog = $state();
 
     $effect(() => {
         fetchPlaylists();
     });
+
+    async function addToPlaylist(playlistId: string) {
+        const response: Response = await fetch(
+            "http://localhost:7001/playlists",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    "type": "add",
+                    "id": playlistId,
+                    "track_id": addTrackId,
+                }),
+            },
+        );
+        if (!response.ok) {
+            console.error('Failed to add track to playlist');
+            return;
+        }
+        console.log(`Added track '${addTrackId}' to playlist '${playlistId}'.`);
+    }
 
     async function createPlaylist() {
         const response: Response = await fetch(
@@ -56,7 +76,7 @@
     bind:this={dialog}
     onclose={() => (showPlaylistModal = false)}
     onclick={(e) => { if (e.target === dialog) showPlaylistModal = false }}
-    class="w-full h-full fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center"
+    class="w-full h-full fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center "
 >
     <div class="bg-gray-800 border-1 border-gray-700 rounded-sm shadow-sm p-5 text-white">
         <div class="flex gap-5">
@@ -65,7 +85,7 @@
         </div>
         <div class="flex flex-col p-2 gap-1">
             {#each playlistList.playlists as playlist}
-                <a class="hover:text-lime-400 transition" href="/playlists/{playlist.id}" onclick={() => showPlaylistModal = false}>{playlist.title}</a>
+                <button class="hover:text-lime-400 transition" onclick={() => addToPlaylist(playlist.id)}>{playlist.title}</button>
             {/each}
         </div>
     </div>

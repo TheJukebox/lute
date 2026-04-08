@@ -184,12 +184,12 @@ func CreatePlaylist(w http.ResponseWriter, request storage.PlaylistRequest) (sto
 }
 
 func AddTrackToPlaylist(w http.ResponseWriter, request storage.PlaylistRequest) (storage.TrackResponse, error) {
-	log.Print(request.Track)
 	track, err := storage.TrackByID(request.Track)
 	if err != nil {
 		http.Error(w, "Failed to find track.", http.StatusInternalServerError)
 		return track, err
 	}
+	log.Printf("add %v to %v", track.Id, request.Id)
 	storage.AddTrackToPlaylist(track.Id.String(), request.Id) 
 	if err := writeResponse(w, track); err != nil {
 		http.Error(w, "Failed to add track to playlist.", http.StatusInternalServerError)
@@ -271,13 +271,14 @@ func Playlists(w http.ResponseWriter, r *http.Request) {
 				}
 				log.Print(playlist.Title)
 			case "add":
+				log.Println("Adding track...");
 				track, err := AddTrackToPlaylist(w, body)
 				if err != nil {
 					http.Error(w, "Failed to add track to playlist", http.StatusInternalServerError)
 					log.Printf("[%v] Failed to add track to playlist: %v", r.RemoteAddr, err)
 					return
 				}
-				log.Print(track.Title)
+				log.Print(track.Title, track.Id)
 			default:
 				http.Error(w, "type must be specified: create, add", http.StatusBadRequest)
 				return

@@ -100,9 +100,9 @@ func AlbumByID(id string) (Album, error) {
 
 func AddTrackToPlaylist(track_id string, playlist_id string) error {
 	query := `
-		INSERT INTO playlist_tracks (tracks_id, playlists_id, track_number)
-		SELECT $1, $2, COALESCE(MAX(track_number), 0) + 1
-		FROM playlist_tracks WHERE playlists_id = $1;
+		INSERT INTO playlist_tracks (track_id, playlist_id, position)
+		SELECT $1, $2, COALESCE(MAX(position), 1) + 1
+		FROM playlist_tracks WHERE playlist_id = $1;
 	`
 	_, err := pool.Exec(ctx, query, track_id, playlist_id)
 	if err != nil {

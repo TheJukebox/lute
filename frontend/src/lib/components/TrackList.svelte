@@ -9,6 +9,7 @@
     import PlaylistModal from '$lib/components/PlaylistModal.svelte';
 
     let showPlaylistModal = $state(false);
+    let addTrackId = $state("");
 
     async function playTrack(track: Track) {
         trackList.nowPlaying = track.id;
@@ -47,8 +48,9 @@
         return "hover:cursor-pointer text-white hover:text-lime-400 transition";
     };
 
-    function popPlaylistModal(e: Event) {
+    function popPlaylistModal(e: Event, trackId: string) {
         e.stopPropagation();
+        addTrackId = trackId; 
         showPlaylistModal = true;
     }
 </script>
@@ -78,8 +80,8 @@
                 <div>
                     {track.album.Title}
                 </div>
-                <div class="flex items-center justify-center self-center bg-gray-600 hover:bg-lime-400 aspect-square w-5 h-5 rounded-full text-xl hover:text-lime-200 hover:scale-[1.05]" onclick={popPlaylistModal}><CirclePlus/></div>
+                <div class="flex items-center justify-center self-center bg-gray-600 hover:bg-lime-400 aspect-square w-5 h-5 rounded-full text-xl hover:text-lime-200 hover:scale-[1.05]" onclick={(e) => popPlaylistModal(e, track.id)}><CirclePlus/></div>
             </button>
         {/each}
-<PlaylistModal bind:showPlaylistModal />
+<PlaylistModal bind:showPlaylistModal bind:addTrackId />
 </div>

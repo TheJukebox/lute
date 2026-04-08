@@ -30,6 +30,7 @@ func checkOrigin(r *http.Request) bool {
 }
 
 func WebsocketHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
     conn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
         log.Printf("Failed to open websocket connection: %v", err)
@@ -53,7 +54,7 @@ func WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AudioStream(w http.ResponseWriter, r *http.Request) {
-    log.Printf("[%v] Opening stream...", r.RemoteAddr)
+	log.Printf("%v %v", r.Method, r.URL.Path)
     conn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
         log.Printf("[%v] Failed to start stream: %v", r.RemoteAddr)
@@ -66,7 +67,6 @@ func AudioStream(w http.ResponseWriter, r *http.Request) {
     // step 2: send audio via websocket
     query := r.URL.Query()
     track := query.Get("track")
-    log.Println("Trying to get ", track)
     file, err := storage.MinioClient.GetObject(context.Background(), "lute-audio", track, minio.GetObjectOptions{});
     if err != nil {
         log.Printf("[%v] Failed to open file for streaming: %v", conn.RemoteAddr(), err) 

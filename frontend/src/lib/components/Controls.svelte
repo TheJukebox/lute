@@ -106,8 +106,8 @@
         <div class="flex text-white text-sm gap-2">
             {#if trackList.currentTrack.title }
                 <p>{trackList.currentTrack.title}</p>
-                <p>|</p><a class="text-lime-300" href="/tracks?album={trackList.currentTrack.artist.ID}">{trackList.currentTrack.album.Title}</a>
-                <p>-</p><a class="text-lime-300" href="/tracks?artist={trackList.currentTrack.artist.ID}">{trackList.currentTrack.artist.Name}</a>
+                <p>|</p><a class="text-lime-300" href="/albums/{trackList.currentTrack.album.ID}/tracks">{trackList.currentTrack.album.Title}</a>
+                <p>-</p><a class="text-lime-300" href="/artists/{trackList.currentTrack.artist.ID}/tracks">{trackList.currentTrack.artist.Name}</a>
             {:else }
                 <p>Happy luting!</p>
             {/if}

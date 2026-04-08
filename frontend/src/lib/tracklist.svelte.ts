@@ -1,10 +1,29 @@
 import type { Track } from '$lib/upload';
 
-export const trackList = $state({ tracks: [], loading: true, nowPlaying: "", currentTrack: {}, currentArtist: {}, currentAlbum: {} });
+export const trackList = $state({ tracks: [], noTracks: true, loading: true, nowPlaying: "", currentTrack: {}, currentArtist: {}, currentAlbum: {} });
 export const artistList = $state({ artists: [], loading: true });
+
+export async function fetchPlaylistTracks(playlistId: string) {
+    trackList.loading = true;
+    trackList.tracks = [];
+    const response = await fetch(`http://localhost:7001/playlists/${playlistId}/tracks`);
+    const data = await response.json();
+    trackList.tracks = data; 
+    if (trackList.tracks.length === 0) {
+        console.log("no tracks");
+    }
+    trackList.loading = false;
+}
+
+export async function fetchPlaylist(playlistId: string): Promise<any> {
+    const response = await fetch(`http://localhost:7001/playlists/${playlistId}`);
+    const data = await response.json();
+    return data;
+}
 
 export async function fetchTracks() {
     trackList.loading = true;
+    trackList.tracks = [];
     const response = await fetch("http://localhost:7001/tracks");
     const data = await response.json();
     trackList.tracks = data.tracks.sort((a, b) => {
@@ -16,7 +35,7 @@ export async function fetchTracks() {
 }
 
 export async function fetchArtist(artistID: string) {
-    const response = await fetch(`http://localhost:7001/artists?artist=${artistID}`);
+    const response = await fetch(`http://localhost:7001/artists/${artistID}`);
     const data = await response.json();
     return data
 }
@@ -31,7 +50,8 @@ export async function fetchArtists() {
 
 export async function fetchArtistTracks(artistID: string) {
     trackList.loading = true;
-    const response = await fetch(`http://localhost:7001/tracks?artist=${artistID}`);
+    trackList.tracks = [];
+    const response = await fetch(`http://localhost:7001/artists/${artistID}/tracks`);
     const data = await response.json();
     trackList.tracks = data.tracks.sort((a, b) => {
         const albumSort = a.album.Title.localeCompare(b.album.Title);
@@ -41,9 +61,17 @@ export async function fetchArtistTracks(artistID: string) {
     trackList.loading = false;
 }
 
+export async function fetchAlbum(albumId: string) {
+    console.log("aaa");
+    const response = await fetch(`http://localhost:7001/albums/${albumId}`);
+    const data = await response.json();
+    return data;
+}
+
 export async function fetchAlbumTracks(albumID: string) {
     trackList.loading = true;
-    const response = await fetch(`http://localhost:7001/tracks?album=${albumID}`);
+    trackList.tracks = [];
+    const response = await fetch(`http://localhost:7001/albums/${albumID}/tracks`);
     const data = await response.json();
     trackList.tracks = data.tracks.sort((a, b) => {
         const albumSort = a.album.Title.localeCompare(b.album.Title);
@@ -52,3 +80,4 @@ export async function fetchAlbumTracks(albumID: string) {
     });
     trackList.loading = false;
 }
+

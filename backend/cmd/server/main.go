@@ -21,7 +21,7 @@ type ServerConfig struct {
 func main() {
     // Configuring the logger
     log.SetFlags(log.Ltime | log.Lshortfile | log.Lmsgprefix)
-    log.SetPrefix("[SERVER] ")
+    log.SetPrefix("\033[32m[SERVER]\033[0m ")
 
     configFile, err := os.ReadFile("lute-config.yaml")
     if err != nil {

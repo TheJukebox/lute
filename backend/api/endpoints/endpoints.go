@@ -1,18 +1,36 @@
 package endpoints
 
 import (
-	"lute/internal/storage"
 	"lute/internal/stream"
+	"lute/api/handlers"
 	"net/http"
 )
 
 // You can register new endpoints here and they will get
 // automatically picked up.
 func init() {
-    http.HandleFunc("/upload", storage.Upload)
+	// Streaming
     http.HandleFunc("/stream", stream.AudioStream)
     http.HandleFunc("/ws", stream.WebsocketHandler)
 
-	http.HandleFunc("/tracks", storage.Tracks)
-	http.HandleFunc("/artists", storage.Artists)
+	// Tracks
+	http.HandleFunc("GET /tracks", handlers.Tracks)
+	http.HandleFunc("GET /artists/{artistId}/tracks", handlers.GetArtistTracks)
+	http.HandleFunc("GET /albums/{albumId}/tracks", handlers.GetAlbumTracks)
+    http.HandleFunc("POST /upload", handlers.Upload)
+    http.HandleFunc("OPTIONS /upload", handlers.Upload)
+
+	// Artists
+	http.HandleFunc("GET /artists", handlers.GetArtists)
+	http.HandleFunc("GET /artists/{artistId}", handlers.GetArtist)
+
+	// Albums
+	http.HandleFunc("GET /albums/{albumId}", handlers.GetAlbum)
+
+	// Playlists
+	http.HandleFunc("POST /playlists", handlers.Playlists)
+	http.HandleFunc("OPTIONS /playlists", handlers.Playlists)
+	http.HandleFunc("GET /playlists", handlers.GetPlaylists)
+	http.HandleFunc("GET /playlists/{playlistId}", handlers.GetPlaylist)
+	http.HandleFunc("GET /playlists/{playlistId}/tracks", handlers.GetPlaylistTracks)
 }

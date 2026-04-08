@@ -32,6 +32,11 @@ func writeResponse(w http.ResponseWriter, response any) error {
 	return json.NewEncoder(w).Encode(response)
 }
 
+func uuidFromPath(path string) (string, error) {
+	id := strings.Split(path, "/")[2]
+	return id, uuid.Validate(id)
+}
+
 func Tracks(w http.ResponseWriter, r *http.Request) {
 	artistID := r.URL.Query().Get("artist")
 	albumID := r.URL.Query().Get("album")
@@ -77,8 +82,12 @@ func GetArtists(w http.ResponseWriter, r *http.Request) {
 
 func GetArtist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
-	path := strings.Split(r.URL.Path, "/")
-	artistId := path[2]
+	artistId, err := uuidFromPath(r.URL.Path)
+	if err != nil {
+		http.Error(w, "Invalid UUID.", http.StatusNotFound)
+		log.Printf("Invalid artist UUID provided: '%v'", artistId)
+		return
+	}
 	artist, err := storage.ArtistByID(artistId)
 	if err != nil {
 		http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
@@ -146,12 +155,17 @@ func GetPlaylists(w http.ResponseWriter, r *http.Request) {
 
 func GetPlaylistTracks(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
-	path := strings.Split(r.URL.Path, "/")
-	playlistId := path[2]
+	playlistId, err := uuidFromPath(r.URL.Path)
+	if err != nil {
+		http.Error(w, "Invalid UUID.", http.StatusNotFound)
+		log.Printf("Invalid playlist UUID provided: '%v'", playlistId)
+		return
+	}
 	response, err := storage.TracksByPlaylistId(playlistId)
 	if err != nil {
 		log.Printf("Failed to fetch tracks for playlist '%v': %v", playlistId, err)
 		http.Error(w, "Failed to fetch tracks for playlist", http.StatusInternalServerError)
+		return
 	}
 	writeResponse(w, response)
 }

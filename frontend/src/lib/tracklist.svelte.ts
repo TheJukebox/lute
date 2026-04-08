@@ -30,7 +30,7 @@ export async function fetchTracks() {
 }
 
 export async function fetchArtist(artistID: string) {
-    const response = await fetch(`http://localhost:7001/artists?artist=${artistID}`);
+    const response = await fetch(`http://localhost:7001/artists/${artistID}`);
     const data = await response.json();
     return data
 }
@@ -46,7 +46,7 @@ export async function fetchArtists() {
 export async function fetchArtistTracks(artistID: string) {
     trackList.loading = true;
     trackList.tracks = [];
-    const response = await fetch(`http://localhost:7001/tracks?artist=${artistID}`);
+    const response = await fetch(`http://localhost:7001/artists/${artistID}/tracks`);
     const data = await response.json();
     trackList.tracks = data.tracks.sort((a, b) => {
         const albumSort = a.album.Title.localeCompare(b.album.Title);
@@ -59,7 +59,7 @@ export async function fetchArtistTracks(artistID: string) {
 export async function fetchAlbumTracks(albumID: string) {
     trackList.loading = true;
     trackList.tracks = [];
-    const response = await fetch(`http://localhost:7001/tracks?album=${albumID}`);
+    const response = await fetch(`http://localhost:7001/albums/${albumID}/tracks`);
     const data = await response.json();
     trackList.tracks = data.tracks.sort((a, b) => {
         const albumSort = a.album.Title.localeCompare(b.album.Title);

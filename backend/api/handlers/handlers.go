@@ -38,20 +38,10 @@ func uuidFromPath(path string) (string, error) {
 }
 
 func Tracks(w http.ResponseWriter, r *http.Request) {
-	artistID := r.URL.Query().Get("artist")
-	albumID := r.URL.Query().Get("album")
-	var tracks []storage.TrackResponse
-	var err error
-	if albumID != "" {
-		tracks, err = storage.TracksByAlbum(albumID)
-	} else if artistID != "" {
-		tracks, err = storage.TracksByArtist(artistID)
-	} else {
-		tracks, err = storage.AllTracks()	
-		if err != nil {
-			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
-			return
-		}
+	tracks, err := storage.AllTracks()	
+	if err != nil {
+		http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+		return
 	}
 	response := storage.TracksResponse {
 		Tracks: tracks,
@@ -61,6 +51,48 @@ func Tracks(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
 		return
 	}
+}
+
+func GetArtistTracks(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
+	artistId, err := uuidFromPath(r.URL.Path)
+	if err != nil {
+		http.Error(w, "Invalid UUID.", http.StatusNotFound)
+		log.Printf("Invalid artist UUID provided: '%v'", artistId)
+	}
+	tracks, err := storage.TracksByArtist(artistId)
+	response := storage.TracksResponse {
+		Tracks: tracks,
+	}
+	if err = writeResponse(w, response); err != nil {
+		log.Printf("Failed to fetch tracks from database: %v", err)
+		http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+		return
+	}
+}
+
+func GetAlbumTracks(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
+	albumId, err := uuidFromPath(r.URL.Path)
+	if err != nil {
+		http.Error(w, "Invalid UUID.", http.StatusNotFound)
+		log.Printf("Invalid album UUID provided: '%v'", albumId)
+	}
+	tracks, err := storage.TracksByAlbum(albumId)
+	log.Println(tracks)
+	if err != nil {
+		log.Printf("Failed to fetch tracks for album '%v': %v", albumId, err)
+		http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+	}
+	response := storage.TracksResponse {
+		Tracks: tracks,
+	}
+	if err = writeResponse(w, response); err != nil {
+		log.Printf("Failed to fetch tracks from database: %v", err)
+		http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+		return
+	}
+	
 }
 
 func GetArtists(w http.ResponseWriter, r *http.Request) {

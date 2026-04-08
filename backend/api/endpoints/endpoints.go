@@ -15,12 +15,14 @@ func init() {
 
 	// Tracks
 	http.HandleFunc("GET /tracks", handlers.Tracks)
+	http.HandleFunc("GET /artists/{artistId}/tracks", handlers.GetArtistTracks)
+	http.HandleFunc("GET /albums/{albumId}/tracks", handlers.GetAlbumTracks)
     http.HandleFunc("POST /upload", handlers.Upload)
     http.HandleFunc("OPTIONS /upload", handlers.Upload)
 
 	// Artists
 	http.HandleFunc("GET /artists", handlers.GetArtists)
-	http.HandleFunc("GET /artists/{artist}", handlers.GetArtist)
+	http.HandleFunc("GET /artists/{artistId}", handlers.GetArtist)
 
 	// Playlists
 	http.HandleFunc("POST /playlists", handlers.Playlists)

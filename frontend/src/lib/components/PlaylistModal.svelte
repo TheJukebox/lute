@@ -1,9 +1,14 @@
 <script lang="ts">
-    import { ListPlus, ListRestart } from "@lucide/svelte";
+    import { ListPlus, ListRestart, CircleCheck } from "@lucide/svelte";
+    import { tick } from 'svelte';
+
     const playlistList = $state({playlists: []});
 
     let { showPlaylistModal = $bindable(), addTrackId = $bindable() } = $props();
     let dialog = $state();
+    let nameInput = $state();
+    let newPlaylistName = $state('New playlist');
+    let showNameInput = $state(false);
 
     $effect(() => {
         fetchPlaylists();
@@ -31,7 +36,9 @@
         console.log(`Added track '${addTrackId}' to playlist '${playlistId}'.`);
     }
 
-    async function createPlaylist() {
+    async function createPlaylist(e, newPlaylistName) {
+        e.stopPropagation();
+        showNameInput = false;
         const response: Response = await fetch(
             "http://localhost:7001/playlists",
             {
@@ -41,9 +48,7 @@
                 },
                 body: JSON.stringify({
                     "type": "create",
-                    "title": "new playlist",
-                    //"id": "661bd448-ce59-43ef-9111-67b89eb5383d",
-                    //"track_id": "6ab52a20-5876-4a5c-a00d-d71f835616eb",
+                    "title": newPlaylistName, 
                     "description": "test playlist",
                 }),
             },
@@ -52,7 +57,7 @@
             console.error('Failed to create new playlist');
             return;
         }
-        console.log(await response.json());
+        fetchPlaylists();
     }
 
     async function fetchPlaylists() {
@@ -69,21 +74,39 @@
         playlistList.playlists = await response.json();
         console.log($state.snapshot(playlistList.playlists));
     }
+
+    async function popNameInput() {
+        showNameInput = true;
+        await tick();
+        nameInput.focus();
+    };
+
+    function closeModal() {
+        showPlaylistModal = false;
+        showNameInput = false;
+    }
 </script>
 
 {#if showPlaylistModal }
 <dialog
     bind:this={dialog}
-    onclose={() => (showPlaylistModal = false)}
-    onclick={(e) => { if (e.target === dialog) showPlaylistModal = false }}
+    onclose={closeModal}
+    onclick={(e) => { if (e.target === dialog) closeModal(); }}
     class="w-full h-full fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center "
 >
-    <div class="bg-gray-800 border-1 border-gray-700 rounded-sm shadow-sm p-5 text-white">
+    <div class="w-200 bg-gray-800 border-1 border-gray-700 rounded-sm shadow-sm p-5 text-white">
         <div class="flex gap-5">
-            <button data-sveltekit-reload class="flex gap-1 p-2 hover:text-lime-400 hover:cursor-pointer transition rounded-sm bg-gray-700 border-gray-600 border-1" onclick={createPlaylist}><ListPlus/> New playlist</button>
-            <button class="flex gap-1 p-2 hover:text-lime-400 hover:cursor-pointer transition rounded-sm bg-gray-700 border-gray-600 border-1" onclick={fetchPlaylists}><ListRestart/>Refresh playlists</button>
+            {#if !showNameInput}
+            <button data-sveltekit-reload class="flex gap-1 p-2 hover:text-lime-400 hover:cursor-pointer transition rounded-sm bg-gray-700 border-gray-600 border-1" onclick={popNameInput}><ListPlus/> New playlist</button>
+            {/if}
+            {#if showNameInput}
+            <div class="flex gap-2">
+                <input bind:this={nameInput} class="w-full h-full rounded-sm bg-gray-700 text-lime-400" type="text" bind:value={newPlaylistName}/>
+                <button class="text-lime-800 hover:text-lime-400 hover:cursor-pointer transition" onclick={(e) => createPlaylist(e, newPlaylistName)}><CircleCheck/></button>
+            </div>
+            {/if}
         </div>
-        <div class="flex flex-col p-2 gap-1">
+        <div class="flex flex-col p-2 gap-1 items-start">
             {#each playlistList.playlists as playlist}
                 <button class="hover:text-lime-400 transition" onclick={() => addToPlaylist(playlist.id)}>{playlist.title}</button>
             {/each}

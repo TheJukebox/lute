@@ -94,6 +94,9 @@ var Tables = []Table {
 }
 
 func init() {
+    log.SetFlags(log.Ltime | log.Lshortfile | log.Lmsgprefix)
+    log.SetPrefix("\033[33m[INIT] \033[0m")
+
 	log.Printf("Connecting to Postgres...")
 	var err error
 	pool, err = pgxpool.New(ctx, "postgres://postgres:postgres@localhost:5432/postgres")

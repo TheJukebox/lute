@@ -33,62 +33,58 @@ func writeResponse(w http.ResponseWriter, response any) error {
 }
 
 func Tracks(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-        artistID := r.URL.Query().Get("artist")
-        albumID := r.URL.Query().Get("album")
-        var tracks []storage.TrackResponse
-        var err error
-        if albumID != "" {
-            tracks, err = storage.TracksByAlbum(albumID)
-        } else if artistID != "" {
-            tracks, err = storage.TracksByArtist(artistID)
-        } else {
-            tracks, err = storage.AllTracks()	
-            if err != nil {
-                http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
-                return
-            }
-        }
-		response := storage.TracksResponse {
-			Tracks: tracks,
-		}
-		if err = writeResponse(w, response); err != nil {
-            log.Printf("Failed to fetch tracks from database: %v", err)
+	artistID := r.URL.Query().Get("artist")
+	albumID := r.URL.Query().Get("album")
+	var tracks []storage.TrackResponse
+	var err error
+	if albumID != "" {
+		tracks, err = storage.TracksByAlbum(albumID)
+	} else if artistID != "" {
+		tracks, err = storage.TracksByArtist(artistID)
+	} else {
+		tracks, err = storage.AllTracks()	
+		if err != nil {
 			http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
 			return
 		}
 	}
+	response := storage.TracksResponse {
+		Tracks: tracks,
+	}
+	if err = writeResponse(w, response); err != nil {
+		log.Printf("Failed to fetch tracks from database: %v", err)
+		http.Error(w, "Failed to fetch tracks.", http.StatusInternalServerError)
+		return
+	}
 }
 
 func Artists(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-        artistID := r.URL.Query().Get("artist")
-        var response any
-        if artistID != "" {
-            artist, err := storage.ArtistByID(artistID)
-            if err != nil {
-                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
-                return
-            }
-            response = storage.ArtistResponse {
-                Id: artist.ID,
-                Name: artist.Name,
-            }
-        } else {
-            artists, err := storage.AllArtists()	
-            if err != nil {
-                http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
-                return
-            }
-            response = storage.ArtistsResponse {
-                Artists: artists,
-            }
-        }
-        if err := writeResponse(w, response); err != nil {
-            log.Printf("Failed to fetch artists from database: %v", err)
+	artistID := r.URL.Query().Get("artist")
+	var response any
+	if artistID != "" {
+		artist, err := storage.ArtistByID(artistID)
+		if err != nil {
 			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
 			return
 		}
+		response = storage.ArtistResponse {
+			Id: artist.ID,
+			Name: artist.Name,
+		}
+	} else {
+		artists, err := storage.AllArtists()	
+		if err != nil {
+			http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+			return
+		}
+		response = storage.ArtistsResponse {
+			Artists: artists,
+		}
+	}
+	if err := writeResponse(w, response); err != nil {
+		log.Printf("Failed to fetch artists from database: %v", err)
+		http.Error(w, "Failed to fetch artists.", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -132,6 +128,7 @@ func AddTrackToPlaylist(w http.ResponseWriter, request storage.PlaylistRequest) 
 }
 
 func GetPlaylists(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
 	response, err := storage.AllPlaylists()
 	if err != nil {
 		log.Printf("Failed to fetch playlists: %v", err)
@@ -143,7 +140,6 @@ func GetPlaylists(w http.ResponseWriter, r *http.Request) {
 func GetPlaylistTracks(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
 	path := strings.Split(r.URL.Path, "/")
-	log.Println(path, len(path));
 	playlistId := path[2]
 	response, err := storage.TracksByPlaylistId(playlistId)
 	if err != nil {
@@ -154,6 +150,7 @@ func GetPlaylistTracks(w http.ResponseWriter, r *http.Request) {
 }
 
 func Playlists(w http.ResponseWriter, r *http.Request) {	
+	log.Printf("%v %v", r.Method, r.URL.Path)
     if r.Method == http.MethodOptions {
         w.Header().Set("Access-Control-Allow-Origin", "*")
         w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -213,7 +210,6 @@ func findExistingArtistByName(name string) storage.Artist {
 
 func findExistingAlbum(title string, artistID uuid.UUID) (storage.Album) {
     album, err := storage.AlbumByTitle(title, artistID)
-	log.Println(err)
     if err != nil && err == pgx.ErrNoRows {
         log.Printf("No album '%v' by '%v' exists currently. Creating...", title, artistID)
         album.Title = title
@@ -224,6 +220,7 @@ func findExistingAlbum(title string, artistID uuid.UUID) (storage.Album) {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
     if r.Method == http.MethodOptions {
         w.Header().Set("Access-Control-Allow-Origin", "*")
         w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -233,65 +230,63 @@ func Upload(w http.ResponseWriter, r *http.Request) {
     }
 
     log.Printf("[%v] Received upload request.", r.RemoteAddr)
-    if r.Method == http.MethodPost {
-        err := r.ParseForm()
-        if err != nil {
-            log.Printf("[%v] Failed to parse upload request: %v", r.RemoteAddr, err)
-        }
-        var body storage.UploadRequest
-        err = json.NewDecoder(r.Body).Decode(&body)
-        if err != nil || body.Name == "" || body.UriName == "" || body.ContentType == "" {
-            http.Error(w, "name, uriName, and contentType must be specified.", http.StatusBadRequest)
-            return
-        }
-        name := body.Name
-        uriName := body.UriName
-        contentType := body.ContentType
-        ext, _ := mimeToExtension[body.ContentType]
-        path := body.UriName + ext
-        artistName := body.Artist
-        albumName := body.Album
-        number := body.TrackNumber
-        disk := body.DiskNumber
+	err := r.ParseForm()
+	if err != nil {
+		log.Printf("[%v] Failed to parse upload request: %v", r.RemoteAddr, err)
+	}
+	var body storage.UploadRequest
+	err = json.NewDecoder(r.Body).Decode(&body)
+	if err != nil || body.Name == "" || body.UriName == "" || body.ContentType == "" {
+		http.Error(w, "name, uriName, and contentType must be specified.", http.StatusBadRequest)
+		return
+	}
+	name := body.Name
+	uriName := body.UriName
+	contentType := body.ContentType
+	ext, _ := mimeToExtension[body.ContentType]
+	path := body.UriName + ext
+	artistName := body.Artist
+	albumName := body.Album
+	number := body.TrackNumber
+	disk := body.DiskNumber
 
-        expiry := 10 * time.Minute
+	expiry := 10 * time.Minute
 
-        policy := minio.NewPostPolicy()
-        policy.SetBucket("lute-audio")
-        policy.SetKey(path)
-        policy.SetExpires(time.Now().UTC().Add(expiry))
-        policy.SetContentType(contentType)
-        policy.SetUserMetadata("name", name)
-        policy.SetUserMetadata("artist", artistName)
-        policy.SetUserMetadata("album", albumName)
+	policy := minio.NewPostPolicy()
+	policy.SetBucket("lute-audio")
+	policy.SetKey(path)
+	policy.SetExpires(time.Now().UTC().Add(expiry))
+	policy.SetContentType(contentType)
+	policy.SetUserMetadata("name", name)
+	policy.SetUserMetadata("artist", artistName)
+	policy.SetUserMetadata("album", albumName)
 
-        presignedURL, formData, err := storage.MinioClient.PresignedPostPolicy(context.Background(), policy)
-        if err != nil {
-            log.Printf("[%v] Failed to generate a presigned URL: %v", r.RemoteAddr, err)
-            http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
-            return
-        }
-        response := storage.PresignedUploadResponse {
-            URL: presignedURL.String(),
-            Fields: formData,
-        }
-        if err = writeResponse(w, response); err != nil {
-            http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
-            return
-        }
+	presignedURL, formData, err := storage.MinioClient.PresignedPostPolicy(context.Background(), policy)
+	if err != nil {
+		log.Printf("[%v] Failed to generate a presigned URL: %v", r.RemoteAddr, err)
+		http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
+		return
+	}
+	response := storage.PresignedUploadResponse {
+		URL: presignedURL.String(),
+		Fields: formData,
+	}
+	if err = writeResponse(w, response); err != nil {
+		http.Error(w, "Failed to generate a presigned URL.", http.StatusInternalServerError)
+		return
+	}
 
-        artist := findExistingArtistByName(artistName)
-        album := findExistingAlbum(albumName, artist.ID)
+	artist := findExistingArtistByName(artistName)
+	album := findExistingAlbum(albumName, artist.ID)
 
-		track := storage.Track {
-			Title: name,
-			UriName: uriName,
-			Path: path,
-            Artist: artist.ID,
-            Album: album.ID,
-            TrackNumber: number,
-            DiskNumber: disk,
-		}
-		track.Create()
-    }
+	track := storage.Track {
+		Title: name,
+		UriName: uriName,
+		Path: path,
+		Artist: artist.ID,
+		Album: album.ID,
+		TrackNumber: number,
+		DiskNumber: disk,
+	}
+	track.Create()
 }

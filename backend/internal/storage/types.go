@@ -90,7 +90,6 @@ func (t *Table) Create() {
 				defaultString,
 			)
 		}
-		log.Printf("Generated field string for '%v': %v", field.name, fieldString)
 		fieldStrings = append(fieldStrings, fieldString)
 		if field.primaryKey {
 			primaryKeys = append(primaryKeys, field.name)
@@ -102,13 +101,11 @@ func (t *Table) Create() {
 		strings.Join(fieldStrings, ", "),
 		strings.Join(primaryKeys, ", "),
 	)
-	log.Printf("QUERY_BASE: %v", queryBase)
-	log.Printf("QUERY: %v", query)
 	_, err := pool.Exec(ctx, query)
 	if err != nil {
 		log.Fatalf("Failed to create table '%v': %v", t.name, err)
 	} else {
-		log.Printf("Created table '%v'.", t.name)
+		log.Printf("Created '%v'.", t.name)
 	}
 }
 

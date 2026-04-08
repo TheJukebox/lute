@@ -175,6 +175,17 @@ func AddTrackToPlaylist(w http.ResponseWriter, request storage.PlaylistRequest) 
 	return track, nil
 }
 
+func GetPlaylist(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
+	playlistId, err := uuidFromPath(r.URL.Path)
+	response, err := storage.PlaylistById(playlistId)
+	if err != nil {
+		log.Printf("Failed to fetch playlist '%v': %v", playlistId, err)
+		http.Error(w, "Failed to  fetch playlist.", http.StatusInternalServerError)
+	}
+	writeResponse(w, response)
+}
+
 func GetPlaylists(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
 	response, err := storage.AllPlaylists()

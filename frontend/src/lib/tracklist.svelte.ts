@@ -6,7 +6,7 @@ export const artistList = $state({ artists: [], loading: true });
 export async function fetchPlaylistTracks(playlistId: string) {
     trackList.loading = true;
     trackList.tracks = [];
-    const response = await fetch(`http://localhost:7001/playlists/${playlistId}`);
+    const response = await fetch(`http://localhost:7001/playlists/${playlistId}/tracks`);
     const data = await response.json();
     console.log(data);
     trackList.tracks = data; 
@@ -14,6 +14,13 @@ export async function fetchPlaylistTracks(playlistId: string) {
         console.log("no tracks");
     }
     trackList.loading = false;
+}
+
+export async function fetchPlaylist(playlistId: string): Promise<any> {
+    const response = await fetch(`http://localhost:7001/playlists/${playlistId}`);
+    const data = await response.json();
+    console.log(data);
+    return data;
 }
 
 export async function fetchTracks() {
@@ -68,3 +75,4 @@ export async function fetchAlbumTracks(albumID: string) {
     });
     trackList.loading = false;
 }
+

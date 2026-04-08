@@ -43,10 +43,6 @@
         }
         return "hover:cursor-pointer text-white hover:text-lime-400 transition";
     };
-
-    onMount(() => {
-    });
-
 </script>
 
 <div class="p-2 rounded-sm min-w-full min-h-80 flex flex-col overflow-x-clip h-full max-h-320 transition scroll-smooth">

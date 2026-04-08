@@ -317,3 +317,22 @@ func AllPlaylists() ([]PlaylistResponse, error) {
 	}
 	return response, nil
 }
+
+
+func PlaylistById(id string) (PlaylistResponse, error) {
+	query := `
+		SELECT id, title, description FROM playlists
+		WHERE id = $1
+	`
+	playlist := PlaylistResponse {}
+    err := pool.QueryRow(
+    	ctx,
+		query,
+		id,
+	).Scan(
+		&playlist.Id,
+		&playlist.Title,
+		&playlist.Description,
+	)
+    return playlist, err
+}

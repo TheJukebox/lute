@@ -33,7 +33,6 @@ func main() {
 		fmt.Sprintf("%v:%v", config.Lute.MinioHost, config.Lute.MinioPort),
 		"minioadmin",
 	)
-	log.Println(config.Lute.MinioHost)
     log.Println("Initialised database.")
     if err != nil {
         log.Fatalf("Failed to connect to Minio: %v", err)

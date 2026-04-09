@@ -25,6 +25,12 @@ var upgrader = websocket.Upgrader {
     CheckOrigin: checkOrigin,
 }
 
+// ffmpeg to ID file
+func fileType(path string) {
+}
+// ffmpeg to grab flac header
+// stream chunk type with flac header attached
+
 func checkOrigin(r *http.Request) bool {
     return true;
 }

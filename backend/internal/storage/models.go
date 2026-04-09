@@ -2,6 +2,9 @@ package storage
 
 import (
 	"log"
+	"fmt"
+
+	"lute/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -93,28 +96,25 @@ var Tables = []Table {
     PlaylistTracks,
 }
 
-func init() {
-    log.SetFlags(log.Ltime | log.Lshortfile | log.Lmsgprefix)
-    log.SetPrefix("\033[33m[INIT] \033[0m")
-
-	log.Printf("Connecting to Postgres...")
+func Init() error {
+	connString := fmt.Sprintf(
+		"postgres://postgres:postgres@%v:%v/postgres",
+		config.Lute.PostgresHost,
+		config.Lute.PostgresPort,
+	)
 	var err error
-	pool, err = pgxpool.New(ctx, "postgres://postgres:postgres@localhost:5432/postgres")
+	pool, err = pgxpool.New(ctx, connString)
 	if err != nil {
-		log.Fatalf("Failed to connect to Postgres: %v", err)
-		return
+		return err
 	}
 	err = pool.Ping(ctx)
 	if err != nil {
-		log.Fatalf("Failed to connect to Postgres: %v", err)
-		return
+		return err
 	}
-	log.Println("Connected to Postgres!")
-    log.Println("Creating tables...")
     for _, table := range Tables {
         table.Create()
     }
-    log.Println("Created all tables!")
+	return nil
 }
 
 type Artist struct {

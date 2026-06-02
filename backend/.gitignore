@@ -1,3 +1,4 @@
 lute-config.yaml
 main
 server
+__debug_*
